@@ -3,7 +3,6 @@ import {
   BarChart3,
   Bell,
   BookOpenCheck,
-  Bot,
   Boxes,
   CalendarDays,
   Check,
@@ -18,7 +17,6 @@ import {
   Clock3,
   Download,
   Edit3,
-  Eye,
   FileBarChart,
   FileCheck2,
   FileText,
@@ -39,11 +37,8 @@ import {
   MonitorUp,
   MoreHorizontal,
   Network,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   RefreshCw,
-  RotateCcw,
   Search,
   Settings,
   ShieldCheck,
@@ -204,10 +199,9 @@ function Button({
 function TableActions({ onEdit, onDelete, onView }: { onEdit?: () => void; onDelete?: () => void; onView?: () => void }) {
   return (
     <div className="table-actions">
-      {onView && <button aria-label="查看" title="查看" onClick={onView}><Eye size={16} /></button>}
-      {onEdit && <button aria-label="编辑" title="编辑" onClick={onEdit}><Edit3 size={16} /></button>}
-      {onDelete && <button aria-label="删除" title="删除" className="danger-action" onClick={onDelete}><Trash2 size={16} /></button>}
-      <button aria-label="更多" title="更多"><MoreHorizontal size={16} /></button>
+      {onView && <button aria-label="详情" onClick={onView}>详情</button>}
+      {onEdit && <button aria-label="编辑" onClick={onEdit}>编辑</button>}
+      {onDelete && <button aria-label="删除" className="danger-action" onClick={onDelete}>删除</button>}
     </div>
   );
 }
@@ -220,8 +214,8 @@ function SearchFilters({ placeholder = "请输入关键词搜索", children }: {
         <input placeholder={placeholder} />
       </label>
       {children}
-      <Button icon={Search} variant="primary">查询</Button>
-      <Button icon={RotateCcw}>重置</Button>
+      <Button variant="primary">查询</Button>
+      <Button>重置</Button>
     </div>
   );
 }
@@ -255,13 +249,13 @@ function ChartLines() {
     <svg className="line-chart" viewBox="0 0 720 230" preserveAspectRatio="none" role="img" aria-label="近七日活动访问趋势">
       <defs>
         <linearGradient id="areaA" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#276ef1" stopOpacity=".25" />
-          <stop offset="100%" stopColor="#276ef1" stopOpacity="0" />
+          <stop offset="0%" stopColor="#4180fd" stopOpacity=".25" />
+          <stop offset="100%" stopColor="#4180fd" stopOpacity="0" />
         </linearGradient>
       </defs>
       {[30, 76, 122, 168, 214].map((y) => <line key={y} x1="36" x2="700" y1={y} y2={y} stroke="#e8edf5" strokeDasharray="4 5" />)}
       <path d="M36,176 C90,152 112,170 164,135 S248,152 310,98 S405,123 458,72 S560,108 610,58 S670,84 700,42 L700,214 L36,214 Z" fill="url(#areaA)" />
-      <path d="M36,176 C90,152 112,170 164,135 S248,152 310,98 S405,123 458,72 S560,108 610,58 S670,84 700,42" fill="none" stroke="#276ef1" strokeWidth="3" strokeLinecap="round" />
+      <path d="M36,176 C90,152 112,170 164,135 S248,152 310,98 S405,123 458,72 S560,108 610,58 S670,84 700,42" fill="none" stroke="#4180fd" strokeWidth="3" strokeLinecap="round" />
       {[["周四", 36], ["周五", 146], ["周六", 256], ["周日", 366], ["周一", 476], ["周二", 586], ["周三", 696]].map(([t, x]) => <text key={t} x={x} y="228" textAnchor="middle" fontSize="11" fill="#86909c">{t}</text>)}
     </svg>
   );
@@ -300,10 +294,10 @@ function Dashboard() {
             <div className="donut"><div><strong>1,286</strong><span>活动总数</span></div></div>
             <ul className="donut-legend">
               {[
-                ["会议论坛", "35%", "#276ef1"],
-                ["专题讲座", "28%", "#61d9a7"],
-                ["交流沙龙", "21%", "#f6bd16"],
-                ["专业培训", "16%", "#7262fd"],
+                ["会议论坛", "35%", "#4180fd"],
+                ["专题讲座", "28%", "#58a8f9"],
+                ["交流沙龙", "21%", "#fd7e03"],
+                ["专业培训", "16%", "#4dd164"],
               ].map(([n, p, c]) => <li key={n}><span><i style={{ background: c }} />{n}</span><strong>{p}</strong></li>)}
             </ul>
           </div>
@@ -472,10 +466,10 @@ function UserList({ openModal }: { openModal: (type: ModalType, payload?: string
 
 function RoleManagement({ openModal }: { openModal: (type: ModalType, payload?: string) => void }) {
   const roles = [
-    ["超级管理员", "拥有系统全部管理权限", 3, 8, "系统内置", "#276ef1"],
-    ["部门管理员", "管理本部门用户与内容", 12, 26, "自定义", "#7262fd"],
-    ["内容管理员", "负责门户内容编辑与发布", 8, 42, "自定义", "#61d9a7"],
-    ["审批人员", "处理业务审批与内容审核", 6, 18, "自定义", "#f6bd16"],
+    ["超级管理员", "拥有系统全部管理权限", 3, 8, "系统内置", "#4180fd"],
+    ["部门管理员", "管理本部门用户与内容", 12, 26, "自定义", "#a872e2"],
+    ["内容管理员", "负责门户内容编辑与发布", 8, 42, "自定义", "#4dd164"],
+    ["审批人员", "处理业务审批与内容审核", 6, 18, "自定义", "#f6ba21"],
     ["普通用户", "查看门户内容与提交申请", 1, 62, "系统内置", "#78d3f8"],
   ];
   return (
@@ -571,10 +565,10 @@ function ResourceManagement({ openModal }: { openModal: (type: ModalType, payloa
 
 function ReportsPage() {
   const reports = [
-    ["门户运营周报", "2026 第 27 周", "自动生成", "2026-07-08 08:00", "周报", "#276ef1"],
-    ["活动运营分析报告", "2026 年 6 月", "张明远", "2026-07-02 16:32", "月报", "#61d9a7"],
-    ["门户用户增长分析", "2026 年第二季度", "系统生成", "2026-07-01 09:00", "季报", "#7262fd"],
-    ["内容质量评估报告", "2026 年 6 月", "陈思敏", "2026-06-30 17:20", "专项", "#f6bd16"],
+    ["门户运营周报", "2026 第 27 周", "自动生成", "2026-07-08 08:00", "周报", "#4180fd"],
+    ["活动运营分析报告", "2026 年 6 月", "张明远", "2026-07-02 16:32", "月报", "#4dd164"],
+    ["门户用户增长分析", "2026 年第二季度", "系统生成", "2026-07-01 09:00", "季报", "#a872e2"],
+    ["内容质量评估报告", "2026 年 6 月", "陈思敏", "2026-06-30 17:20", "专项", "#f6ba21"],
   ];
   return (
     <div className="reports-page">
@@ -656,9 +650,14 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ "活动管理": true, "审批管理": true, "组织与权限": true, "门户配置": true });
   return (
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
-      <div className="brand"><div className="brand-mark"><span>G</span><i /></div>{!collapsed && <div><strong>国科信</strong><small>门户管理系统</small></div>}</div>
+      <div className="brand">
+        <img src="./assets/gkx-logo.png" alt="国科信" />
+        {!collapsed && <strong>门户管理系统</strong>}
+      </div>
+      <button className="sidebar-fold" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "展开侧栏" : "收起侧栏"}>
+        <img src={collapsed ? "./assets/sidebar-collapsed.svg" : "./assets/sidebar-expanded.svg"} alt="" />
+      </button>
       <nav>
-        {!collapsed && <p className="nav-section">工作台</p>}
         <button className={`nav-home ${active === "dashboard" ? "active" : ""}`} onClick={() => setActive("dashboard")}><Gauge size={19} />{!collapsed && <span>首页概览</span>}</button>
         {menuGroups.map((group) => {
           const GroupIcon = group.icon;
@@ -670,7 +669,7 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
           </div>;
         })}
       </nav>
-      <div className="sidebar-footer"><button><Settings size={18} />{!collapsed && <span>系统设置</span>}</button><button onClick={() => setCollapsed(!collapsed)}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}{!collapsed && <span>收起侧栏</span>}</button></div>
+      <div className="sidebar-footer"><button><Settings size={18} />{!collapsed && <span>系统设置</span>}</button></div>
     </aside>
   );
 }
@@ -683,10 +682,10 @@ function TopBar({ collapsed, onMenu, onSearch }: { collapsed: boolean; onMenu: (
       <button className="mobile-menu" onClick={onMenu}><Menu size={20} /></button>
       <button className="global-search" onClick={onSearch}><Search size={17} /><span>搜索菜单、用户或内容</span><kbd>⌘ K</kbd></button>
       <div className="top-actions">
-        <button className="top-icon"><Bot size={19} /></button>
+        <button className="top-link"><MessageSquareMore size={16} /><span>帮助</span></button>
+        <button className="top-link"><LayoutGrid size={16} /><span>应用</span></button>
         <div className="popover-wrap"><button className="top-icon" onClick={() => { setNotifications(!notifications); setProfile(false); }}><Bell size={19} /><i /></button>{notifications && <div className="popover notification-pop"><header><b>消息通知</b><button>全部已读</button></header>{[["审批提醒", "您有 8 条内容等待审批", "2分钟前"], ["活动提醒", "科技创新成果交流会即将开始", "1小时前"], ["系统通知", "运营周报已生成", "昨天"]].map(([t, d, time], i) => <div className="notice-item" key={t}><span className={`notice-icon n${i + 1}`}>{i === 0 ? <ClipboardCheck size={16} /> : i === 1 ? <CalendarDays size={16} /> : <FileBarChart size={16} />}</span><div><b>{t}</b><p>{d}</p><small>{time}</small></div></div>)}<footer>查看全部通知 <ChevronRight size={14} /></footer></div>}</div>
-        <span className="top-divider" />
-        <div className="popover-wrap"><button className="profile-button" onClick={() => { setProfile(!profile); setNotifications(false); }}><span>管理员</span><div><b>系统管理员</b><small>超级管理员</small></div><ChevronDown size={14} /></button>{profile && <div className="popover profile-pop"><button><CircleUserRound size={16} />个人中心</button><button><LockKeyhole size={16} />修改密码</button><i /><button className="logout"><LogOut size={16} />退出登录</button></div>}</div>
+        <div className="popover-wrap"><button className="profile-button" onClick={() => { setProfile(!profile); setNotifications(false); }}><img src="./assets/user-avatar.png" alt="系统管理员" /><b>系统管理员</b><ChevronDown size={12} /></button>{profile && <div className="popover profile-pop"><button><CircleUserRound size={16} />个人中心</button><button><LockKeyhole size={16} />修改密码</button><i /><button className="logout"><LogOut size={16} />退出登录</button></div>}</div>
       </div>
     </header>
   );
@@ -715,14 +714,16 @@ export default function App() {
   }, [active]);
   const go = (key: PageKey) => { setActive(key); setMobileOpen(false); };
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${collapsed ? "is-sidebar-collapsed" : ""}`}>
       <div className={mobileOpen ? "mobile-sidebar open" : "mobile-sidebar"}><Sidebar active={active} setActive={go} collapsed={collapsed} setCollapsed={setCollapsed} /></div>
       {mobileOpen && <button className="mobile-overlay" onClick={() => setMobileOpen(false)} aria-label="关闭导航" />}
       <TopBar collapsed={collapsed} onMenu={() => setMobileOpen(!mobileOpen)} onSearch={() => setCommand(true)} />
       <main className={collapsed ? "main collapsed" : "main"}>
-        <div className="page-heading"><div><p><Home size={14} />首页 <ChevronRight size={13} /> {current.title}</p><h1>{current.title}</h1><span>{current.subtitle}</span></div><div className="heading-actions"><Button icon={MessageSquareMore}>帮助与反馈</Button></div></div>
-        <div className="page-content">{page}</div>
-        <footer className="app-footer">© 2026 国科信门户管理系统 · 技术支持：信息中心</footer>
+        <div className="page-heading"><p><img src="./assets/breadcrumb-home.svg" alt="" /> <span>/</span> {current.title}</p></div>
+        <div className="page-content">
+          <div className="page-title-block"><h1>{current.title}</h1><span>{current.subtitle}</span></div>
+          <div className="page-body">{page}</div>
+        </div>
       </main>
       <Modal type={modal.type} payload={modal.payload} close={() => setModal({ type: null, payload: "" })} />
       {command && <div className="modal-backdrop command-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setCommand(false)}><div className="command-box"><label><Search size={20} /><input autoFocus placeholder="搜索菜单、用户或内容…" /><kbd>ESC</kbd></label><p>快速导航</p><div>{menuGroups.flatMap(g => g.children).slice(0, 7).map(item => <button key={item.key} onClick={() => { go(item.key); setCommand(false); }}><span><LayoutGrid size={16} />{item.label}</span><small>菜单 <ChevronRight size={14} /></small></button>)}</div></div></div>}
