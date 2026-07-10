@@ -645,6 +645,7 @@ textarea:focus-visible {
   font-size: 16px;
   line-height: 24px;
   font-weight: 500;
+  letter-spacing: 0;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
