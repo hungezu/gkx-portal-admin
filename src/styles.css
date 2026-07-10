@@ -830,17 +830,17 @@ textarea:focus-visible {
 }
 
 .nav-section-block {
-  margin-bottom: 18px;
+  margin-bottom: 8px;
 }
 
 .nav-section-title {
-  min-height: 28px;
+  min-height: 22px;
   padding: 0 14px;
   display: flex;
   align-items: center;
   color: var(--gkx-text-tertiary);
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 12px;
+  line-height: 20px;
   font-weight: 400;
 }
 
@@ -894,19 +894,21 @@ textarea:focus-visible {
 
 .nav-section-title + .group-button,
 .nav-section-title + .nav-group {
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .nav-group.has-active > .group-button {
-  color: var(--gkx-text-primary);
-  font-weight: 400;
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
+  color: var(--gkx-brand);
+  font-weight: 500;
+  border-color: #fff;
+  background:
+    linear-gradient(-8.38deg, rgba(255,255,255,0) 39.256%, rgba(22,93,255,.18) 114.2%),
+    rgba(255,255,255,.48);
+  box-shadow: 0 1px 12px rgba(83, 98, 144, .08);
 }
 
 .nav-group.has-active > .group-button svg {
-  color: var(--gkx-text-tertiary);
+  color: var(--gkx-brand);
 }
 
 .group-button span,
