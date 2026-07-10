@@ -111,19 +111,19 @@ const allMenuItems = navSections.flatMap((section) =>
   section.items.flatMap((item) => item.key ? [{ key: item.key, label: item.label }] : item.children ?? [])
 );
 
-const pageTitles: Record<PageKey, { title: string; subtitle: string }> = {
-  "report-management": { title: "报告管理", subtitle: "系统管理" },
-  "workflow-center": { title: "流程中心", subtitle: "审核管理" },
-  "form-center": { title: "表单中心", subtitle: "审核管理" },
-  "audit-content": { title: "审核内容管理", subtitle: "审核管理" },
-  "event-info": { title: "埋点信息", subtitle: "埋点管理" },
-  "event-dashboard": { title: "数据看板", subtitle: "埋点管理" },
-  "org-management": { title: "组织管理", subtitle: "权限管理" },
-  "user-management": { title: "用户管理", subtitle: "权限管理" },
-  "role-management": { title: "角色管理", subtitle: "权限管理" },
-  "page-management": { title: "页面管理", subtitle: "权限管理" },
-  "resource-management": { title: "资源管理", subtitle: "权限管理" },
-  "permission-config": { title: "权限配置", subtitle: "权限管理" },
+const pageLabels: Record<PageKey, string> = {
+  "report-management": "报告管理",
+  "workflow-center": "流程中心",
+  "form-center": "表单中心",
+  "audit-content": "审核内容管理",
+  "event-info": "埋点信息",
+  "event-dashboard": "数据看板",
+  "org-management": "组织管理",
+  "user-management": "用户管理",
+  "role-management": "角色管理",
+  "page-management": "页面管理",
+  "resource-management": "资源管理",
+  "permission-config": "权限配置",
 };
 
 const reportTypeOptions = ["TR报告", "战略咨询报告", "洞察分析报告", "未来产业报告"];
@@ -917,7 +917,7 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [modal, setModal] = useState<{ type: ModalType; payload: string }>({ type: null, payload: "" });
   const [command, setCommand] = useState(false);
-  const current = pageTitles[active];
+  const currentTitle = pageLabels[active];
   const openModal = (type: ModalType, payload = "") => setModal({ type, payload });
   const page = useMemo(() => {
     if (active === "report-management") return <ReportManagement openModal={openModal} />;
@@ -940,9 +940,8 @@ export default function App() {
       {mobileOpen && <button className="mobile-overlay" onClick={() => setMobileOpen(false)} aria-label="关闭导航" />}
       <TopBar collapsed={collapsed} onMenu={() => setMobileOpen(!mobileOpen)} onSearch={() => setCommand(true)} />
       <main className={collapsed ? "main collapsed" : "main"}>
-        <div className="page-heading"><p><img src="./assets/breadcrumb-home.svg" alt="" /> <span>/</span> {current.title}</p></div>
+        <div className="page-heading"><p><img src="./assets/breadcrumb-home.svg" alt="" /> <span>/</span> {currentTitle}</p></div>
         <div className="page-content">
-          <div className="page-title-block"><h1>{current.title}</h1><span>{current.subtitle}</span></div>
           <div className="page-body">{page}</div>
         </div>
       </main>

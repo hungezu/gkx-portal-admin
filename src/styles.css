@@ -1154,26 +1154,6 @@ textarea:focus-visible {
   border-radius: var(--card-radius);
 }
 
-.page-title-block {
-  flex: 0 0 auto;
-}
-
-.page-title-block h1 {
-  margin: 0;
-  color: var(--gkx-text-primary);
-  font-size: 20px;
-  line-height: 28px;
-  font-weight: 600;
-}
-
-.page-title-block span {
-  display: block;
-  margin-top: 4px;
-  color: var(--gkx-text-tertiary);
-  font-size: 12px;
-  line-height: 20px;
-}
-
 .page-body {
   min-height: 0;
   flex: 1 1 auto;
@@ -2331,11 +2311,6 @@ tbody tr:hover {
   .page-content {
     padding: 12px;
     gap: 12px;
-  }
-
-  .page-title-block h1 {
-    font-size: 18px;
-    line-height: 26px;
   }
 
   .page-body > .card.page-card {
