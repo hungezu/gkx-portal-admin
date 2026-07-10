@@ -99,7 +99,7 @@ const menuGroups: MenuGroup[] = [
     children: [
       { key: "approval-content", label: "内容审批" },
       { key: "approval-form", label: "表单审批" },
-      { key: "approval-process", label: "流程配置" },
+      { key: "approval-process", label: "流程设计器" },
     ],
   },
   {
@@ -127,7 +127,7 @@ const pageTitles: Record<PageKey, { title: string; subtitle: string }> = {
   events: { title: "活动列表", subtitle: "管理门户活动的创建、发布与归档" },
   "approval-content": { title: "内容审批", subtitle: "审核门户文章、专题与活动内容" },
   "approval-form": { title: "表单审批", subtitle: "处理用户提交的业务申请" },
-  "approval-process": { title: "流程配置", subtitle: "配置审批节点、条件与处理人" },
+  "approval-process": { title: "流程设计器", subtitle: "配置流程节点、提交条件与流转规则" },
   users: { title: "用户管理", subtitle: "管理平台用户、部门及账户状态" },
   roles: { title: "角色管理", subtitle: "维护角色与数据权限范围" },
   permission: { title: "权限配置", subtitle: "精细配置菜单、操作和数据权限" },
@@ -396,45 +396,111 @@ function ApprovalList({ mode, openModal }: { mode: "content" | "form"; openModal
 }
 
 function ProcessPage() {
-  const [selected, setSelected] = useState("内容发布审批");
-  const processes = ["内容发布审批", "活动发布审批", "资源上传审批", "账号权限申请"];
+  const [selectedNode, setSelectedNode] = useState<"start" | "process" | "cc" | "end">("process");
+  const [conditions, setConditions] = useState([{ id: 1 }]);
+  const [published, setPublished] = useState(false);
+  const nodeCards: Array<{ key: "start" | "process" | "cc" | "end"; title: string; note?: string; locked?: boolean; active?: boolean }> = [
+    { key: "start", title: "流程发起节点", note: "系统默认，不可删除", locked: true },
+    { key: "end", title: "流程结束节点", note: "系统默认，不可删除", locked: true },
+    { key: "process", title: "流程节点", active: selectedNode === "process" },
+    { key: "cc", title: "抄送节点", active: selectedNode === "cc" },
+  ];
+  const addCondition = () => setConditions((list) => [...list, { id: Date.now() }]);
+  const removeCondition = (id: number) => setConditions((list) => (list.length > 1 ? list.filter((item) => item.id !== id) : list));
+
   return (
-    <div className="process-layout">
-      <section className="card process-list">
-        <CardHeader title="审批流程" action={<button className="icon-btn"><Plus size={17} /></button>} />
-        <label className="mini-search"><Search size={15} /><input placeholder="搜索流程" /></label>
-        {processes.map((p, i) => <button className={selected === p ? "active" : ""} onClick={() => setSelected(p)} key={p}><span className={`process-badge p${i + 1}`}><GitBranch size={17} /></span><span><b>{p}</b><small>已启用 · 更新于 07-{9 - i}</small></span><ChevronRight size={16} /></button>)}
-      </section>
-      <section className="card process-canvas">
-        <div className="canvas-toolbar">
-          <div><h3>{selected}</h3><StatusTag value="已启用" /></div>
-          <div><Button>版本记录</Button><Button variant="primary">保存并发布</Button></div>
+    <section className="card process-designer">
+      <header className="process-designer-header">
+        <div className="process-breadcrumb">
+          <span>流程中心</span>
+          <i>/</i>
+          <strong>流程设计器</strong>
         </div>
-        <div className="canvas-actions"><button><ChevronsLeft size={16} /></button><button><ChevronsRight size={16} /></button><span /><button>80%</button><button><RefreshCw size={15} /></button></div>
-        <div className="flow-canvas">
-          <FlowNode className="start" icon={Check} title="发起申请" subtitle="由申请人提交" />
-          <div className="flow-line" />
-          <FlowNode icon={UserCheck} title="部门负责人审批" subtitle="指定角色：部门管理员" />
-          <div className="flow-line"><button aria-label="添加节点"><Plus size={14} /></button></div>
-          <div className="condition-node"><div><GitBranch size={16} />条件分支</div><p>内容类型 = “专题”</p><button><Settings size={14} /></button></div>
-          <div className="branch-lines"><i /><i /></div>
-          <div className="branch-nodes">
-            <FlowNode icon={Users} title="运营中心会签" subtitle="全部通过后进入下一节点" />
-            <FlowNode icon={UserCog} title="分管领导审批" subtitle="指定人员：王主任" />
+        <button className={`publish-button ${published ? "done" : ""}`} onClick={() => setPublished(true)}>
+          {published ? "已发布" : "发布"}
+        </button>
+      </header>
+
+      <div className="process-designer-main">
+        <aside className="node-palette">
+          <div className="node-palette-title">流程设计器节点</div>
+          <div className="node-list">
+            {nodeCards.map((node) => (
+              <button
+                key={node.key}
+                type="button"
+                className={`node-card ${node.locked ? "locked" : ""} ${node.active ? "active" : ""}`}
+                onClick={() => !node.locked && setSelectedNode(node.key)}
+                disabled={node.locked}
+              >
+                <span className={`node-icon ${node.key}`}>
+                  {node.key === "process" ? <CircleUserRound size={16} /> : node.key === "cc" ? <FileText size={16} /> : <i />}
+                </span>
+                <span>
+                  <b>{node.title}</b>
+                  {node.note && <small>{node.note}</small>}
+                </span>
+              </button>
+            ))}
           </div>
-          <div className="merge-lines"><i /><i /></div>
-          <FlowNode className="end" icon={CheckCircle2} title="审批完成" subtitle="自动发布并通知发起人" />
-        </div>
-      </section>
-      <aside className="card property-panel">
-        <CardHeader title="节点设置" action={<button className="icon-btn"><X size={16} /></button>} />
-        <FormField label="节点名称"><input defaultValue="部门负责人审批" /></FormField>
-        <FormField label="审批类型"><SelectField label="人工审批" /></FormField>
-        <FormField label="审批人"><div className="selected-person"><CircleUserRound size={18} /><span>部门管理员</span><X size={14} /></div><button className="add-person"><Plus size={14} />添加审批人</button></FormField>
-        <FormField label="多人审批方式"><label className="radio-line"><input type="radio" defaultChecked /> 或签（一人通过即可）</label><label className="radio-line"><input type="radio" /> 会签（全部通过）</label></FormField>
-        <FormField label="高级设置"><label className="switch-line"><span>允许转交</span><input type="checkbox" defaultChecked /></label><label className="switch-line"><span>超时自动通过</span><input type="checkbox" /></label></FormField>
-      </aside>
-    </div>
+        </aside>
+
+        <section className="designer-canvas" aria-label="流程画布">
+          <div className="flow-strip">
+            <button className="flow-terminal start" onClick={() => setSelectedNode("start")} aria-label="流程发起节点"><span /></button>
+            <i className="flow-connector" />
+            <button className={`canvas-node ${selectedNode === "process" ? "active" : ""}`} onClick={() => setSelectedNode("process")}>
+              <CircleUserRound size={16} />
+              <span>流程节点</span>
+            </button>
+            <i className="flow-connector" />
+            <button className="flow-terminal end" onClick={() => setSelectedNode("end")} aria-label="流程结束节点"><span /></button>
+          </div>
+        </section>
+
+        <aside className="node-property">
+          <div className="node-property-title">节点属性配置</div>
+          <div className="node-property-body">
+            <label className="designer-field">
+              <span>节点提交条件</span>
+              <input type="text" placeholder="要求需要满足一定的条件方可提交流程" />
+            </label>
+
+            <div className="designer-field">
+              <span>有多位负责人时</span>
+              <div className="radio-stack">
+                <label><input type="radio" name="multi_user" defaultChecked />所有负责人提交后进入下一节点</label>
+                <label><input type="radio" name="multi_user" />任一负责人提交后进入下一节点</label>
+              </div>
+            </div>
+
+            <label className="designer-field">
+              <span>找不到节点负责人时</span>
+              <select defaultValue="自动提交当前待办">
+                <option>自动提交当前待办</option>
+                <option>将待办转给指定人员进行处理</option>
+              </select>
+            </label>
+
+            <hr />
+
+            <div className="condition-panel">
+              <h3>按条件流转</h3>
+              <p>根据不同的填写内容使流程流向不同的流程节点</p>
+              {conditions.map((condition) => (
+                <div className="condition-row" key={condition.id}>
+                  <select defaultValue="选择填写内容"><option>选择填写内容</option></select>
+                  <select defaultValue="包含"><option>包含</option><option>等于</option></select>
+                  <input type="text" placeholder="条件值" />
+                  <button type="button" className="delete-condition" onClick={() => removeCondition(condition.id)} aria-label="删除流转条件"><Trash2 size={16} /></button>
+                </div>
+              ))}
+              <button type="button" className="add-condition" onClick={addCondition}><Plus size={14} />添加流转条件</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
   );
 }
 
@@ -503,7 +569,7 @@ function PermissionPage({ openModal }: { openModal: (type: ModalType, payload?: 
         <div className="permission-table">
           <div className="permission-title"><div><h3>审批管理</h3><p>配置该角色在审批模块中的操作权限</p></div><label><input type="checkbox" /> 全选本模块</label></div>
           <table><thead><tr><th>功能菜单</th>{perms.map(p => <th key={p}>{p}</th>)}</tr></thead><tbody>
-            {["内容审批", "表单审批", "流程配置"].map((m, row) => <tr key={m}><td><label><input type="checkbox" defaultChecked />{m}</label></td>{perms.map((p, col) => <td key={p}><input type="checkbox" defaultChecked={(row + col) % 3 !== 1} disabled={(row === 2 && col > 3)} /></td>)}</tr>)}
+            {["内容审批", "表单审批", "流程设计器"].map((m, row) => <tr key={m}><td><label><input type="checkbox" defaultChecked />{m}</label></td>{perms.map((p, col) => <td key={p}><input type="checkbox" defaultChecked={(row + col) % 3 !== 1} disabled={(row === 2 && col > 3)} /></td>)}</tr>)}
           </tbody></table>
           <div className="data-scope"><h3>数据权限范围</h3><p>设置角色可查看和操作的数据范围</p><div>{["仅本人数据", "本部门数据", "本部门及下级部门", "全部数据", "自定义数据范围"].map((x, i) => <label key={x}><input type="radio" name="scope" defaultChecked={i === 1} /><span><b>{x}</b><small>{["只能查看自己创建的数据", "可查看本部门全部数据", "包含所有下级部门数据", "不受部门范围限制", "选择指定部门和人员"][i]}</small></span></label>)}</div></div>
         </div>
@@ -520,7 +586,7 @@ function MenuManagement({ openModal }: { openModal: (type: ModalType, payload?: 
     ["审批管理", "目录", "approval", "2", "显示", "正常", 0],
     ["内容审批", "菜单", "approval:content", "1", "显示", "正常", 1],
     ["表单审批", "菜单", "approval:form", "2", "显示", "正常", 1],
-    ["流程配置", "菜单", "approval:process", "3", "隐藏", "正常", 1],
+    ["流程设计器", "菜单", "approval:process", "3", "隐藏", "正常", 1],
     ["组织与权限", "目录", "system", "3", "显示", "正常", 0],
   ];
   return (
