@@ -926,13 +926,13 @@ textarea:focus-visible {
 }
 
 .group-children {
-  padding: 4px 0 4px 24px;
+  padding: 4px 0;
 }
 
 .group-children button {
-  width: 144px;
+  width: 168px;
   height: 36px;
-  padding: 0 12px;
+  padding: 0 12px 0 44px;
   display: flex;
   align-items: center;
   color: var(--gkx-text-secondary);
@@ -947,7 +947,12 @@ textarea:focus-visible {
 .group-children button:hover,
 .group-children button.active {
   color: var(--gkx-brand);
-  background: rgba(255,255,255,.24);
+  border-color: #fff;
+  background:
+    linear-gradient(-8.38deg, rgba(255,255,255,0) 39.256%, rgba(22,93,255,.16) 114.2%),
+    rgba(255,255,255,.48);
+  box-shadow: 0 1px 12px rgba(83, 98, 144, .08);
+  font-weight: 500;
 }
 
 .sidebar.collapsed .group-button,
