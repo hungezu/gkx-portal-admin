@@ -507,8 +507,7 @@ input[type="checkbox"]:not(table input):not(.resource-toolbar input):not(.asset-
   .donut-wrap { flex-direction: column; }
   .rank-row { grid-template-columns: 24px 1fr 48px; }
   .rank-row .progress { display: none; }
-  .filters > * { flex: 1 1 140px; }
-  .filters .search-field { flex-basis: 100%; width: 100%; }
+  .filters { grid-template-columns: 1fr; }
   .table-toolbar { align-items: flex-start; padding: 12px 0; }
   .table-toolbar > div { flex-wrap: wrap; }
   .page-card { padding: 12px; }
@@ -562,6 +561,8 @@ input[type="checkbox"]:not(table input):not(.resource-toolbar input):not(.asset-
   --glass-radius: 8px;
   --card-radius: 6px;
   --control-height: 32px;
+  --filter-label-width: 96px;
+  --filter-actions-width: 136px;
   --table-row-height: 40px;
   --primary: var(--gkx-brand);
   --primary-hover: var(--gkx-brand-hover);
@@ -1268,8 +1269,146 @@ textarea:focus-visible {
 
 .filters {
   padding: 0;
-  gap: var(--space-small);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-medium);
+  align-items: center;
   border: 0;
+}
+
+.filter-field {
+  min-width: 0;
+  height: var(--control-height);
+  display: grid;
+  grid-template-columns: var(--filter-label-width, 96px) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-medium);
+}
+
+.filter-label {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gkx-text-primary);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-control,
+.filter-select-control {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-height);
+  box-sizing: border-box;
+  color: var(--gkx-text-primary);
+  background: #fff;
+  border: 1px solid var(--gkx-border);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.filter-control {
+  padding: 0 12px;
+  outline: 0;
+}
+
+.filter-control::placeholder {
+  color: var(--gkx-text-tertiary);
+}
+
+.filter-select-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.filter-select-trigger {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-small);
+  color: var(--gkx-text-primary);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.filter-select-trigger span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-select-trigger svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: var(--gkx-text-tertiary);
+  stroke-width: 1.2;
+  transition: transform .16s ease;
+}
+
+.filter-select-control.open .filter-select-trigger svg {
+  transform: rotate(180deg);
+}
+
+.filter-select-menu {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid var(--gkx-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(29,33,41,.12);
+}
+
+.filter-select-menu button {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--gkx-text-primary);
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-select-menu button:hover {
+  background: var(--gkx-bg-module);
+}
+
+.filter-select-menu button.active {
+  color: var(--gkx-brand);
+  background: var(--gkx-brand-light);
+}
+
+.filter-field:focus-within .filter-control,
+.filter-field:focus-within .filter-select-control {
+  border-color: var(--gkx-brand);
+  box-shadow: 0 0 0 2px rgba(22,93,255,.1);
+}
+
+.filters + .table-wrap,
+.filters + .stat-grid {
+  margin-top: var(--space-medium);
 }
 
 .search-field,
@@ -2317,18 +2456,14 @@ tbody tr:hover {
     padding: 0;
   }
 
-  .filters > * {
-    flex: 1 1 100%;
-  }
-
-  .filters .search-field {
-    width: 100%;
-    flex-basis: 100%;
+  .filters {
+    grid-template-columns: 1fr;
   }
 
   .btn,
-  .search-field,
-  .select-field,
+  .filter-field,
+  .filter-control,
+  .filter-select-control,
   .date-field,
   .icon-btn {
     min-height: 40px;

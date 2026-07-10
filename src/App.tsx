@@ -248,21 +248,60 @@ function ActionLinks({ actions }: { actions: Array<string | false | null | undef
 
 function FilterInput({ label, placeholder = label }: { label: string; placeholder?: string }) {
   return (
-    <label className="search-field">
-      <Search size={17} />
-      <input aria-label={label} placeholder={placeholder} />
+    <label className="filter-field">
+      <span className="filter-label">{label}</span>
+      <input className="filter-control" aria-label={label} placeholder={placeholder} />
     </label>
   );
 }
 
 function FilterSelect({ label, options }: { label: string; options: string[] }) {
+  const [selected, setSelected] = useState(options[0]);
+  const [open, setOpen] = useState(false);
   return (
-    <label className="select-field">
-      <span>{label}</span>
-      <select aria-label={label} defaultValue={options[0]}>
-        {options.map((option) => <option key={option}>{option}</option>)}
-      </select>
-    </label>
+    <div className="filter-field">
+      <span className="filter-label">{label}</span>
+      <div
+        className={`filter-select-control ${open ? "open" : ""}`}
+        onBlur={(event) => {
+          const nextTarget = event.relatedTarget;
+          if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+            setOpen(false);
+          }
+        }}
+      >
+        <button
+          type="button"
+          className="filter-select-trigger"
+          aria-label={label}
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          onClick={() => setOpen((value) => !value)}
+        >
+          <span>{selected}</span>
+          <ChevronDown aria-hidden="true" size={16} />
+        </button>
+        {open && (
+          <div className="filter-select-menu" role="listbox" aria-label={label}>
+            {options.map((option) => (
+              <button
+                type="button"
+                role="option"
+                aria-selected={selected === option}
+                className={selected === option ? "active" : ""}
+                key={option}
+                onClick={() => {
+                  setSelected(option);
+                  setOpen(false);
+                }}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -546,7 +585,9 @@ function OrgManagement() {
     <section className="card page-card">
       <div className="filters">
         <FilterInput label="组织检索" placeholder="组织检索" />
-        <Button icon={Network}>组织数据对接</Button>
+      </div>
+      <div className="table-toolbar">
+        <div><Button icon={Network}>组织数据对接</Button></div>
       </div>
       <DataTable columns={["组织姓名", "父组织名称"]} rows={orgRows} />
     </section>
@@ -558,8 +599,12 @@ function UserManagement({ openModal }: { openModal: (type: ModalType, payload?: 
     <section className="card page-card">
       <div className="filters">
         <FilterInput label="用户检索" placeholder="用户检索" />
-        <Button icon={Network}>用户数据对接</Button>
-        <Button variant="primary" icon={Plus} onClick={() => openModal("user")}>用户注册</Button>
+      </div>
+      <div className="table-toolbar">
+        <div>
+          <Button icon={Network}>用户数据对接</Button>
+          <Button variant="primary" icon={Plus} onClick={() => openModal("user")}>用户注册</Button>
+        </div>
       </div>
       <DataTable columns={["用户ID", "用户姓名", "所属组织名称", "手机号", "邮箱", "创建时间", "账号状态"]} rows={userRows.map((row) => ({ ...row, 原始账号状态: row.账号状态, 账号状态: <StatusTag value={row.账号状态} /> }))} actions={(row) => <ActionLinks actions={[row.原始账号状态 === "启用" ? "禁用" : "启用", "查看详情"]} />} />
       <Pagination total={userRows.length} />
@@ -574,7 +619,9 @@ function RoleManagement({ openModal }: { openModal: (type: ModalType, payload?: 
         <FilterInput label="角色ID" placeholder="角色ID" />
         <FilterInput label="角色名称" placeholder="角色名称" />
         <FilterSelect label="状态" options={["启用", "禁用", "废弃"]} />
-        <Button variant="primary" icon={Plus} onClick={() => openModal("role")}>新建</Button>
+      </div>
+      <div className="table-toolbar">
+        <div><Button variant="primary" icon={Plus} onClick={() => openModal("role")}>新建</Button></div>
       </div>
       <DataTable
         columns={["角色ID", "角色名称", "角色描述", "状态", "创建人", "创建时间", "最近修改人", "最近修改时间"]}
