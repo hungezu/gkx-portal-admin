@@ -333,8 +333,6 @@ function ReportManagement({ openModal }: { openModal: (type: ModalType, payload?
         <FilterSelect label="所属领域" options={["人工智能", "智能制造", "新材料", "低空经济"]} />
         <FilterInput label="报告来源" />
         <FilterSelect label="排序规则" options={["上传时间", "报告类型", "所属领域", "报告来源"]} />
-        <Button variant="primary">查询</Button>
-        <Button>重置</Button>
       </div>
       <div className="table-toolbar">
         <div><Button variant="primary" icon={Upload} onClick={() => openModal("report")}>报告上传</Button></div>
@@ -528,7 +526,6 @@ function EventTracking({ openModal, initialTab }: { openModal: (type: ModalType,
         <>
           <div className="filters">
             <FilterSelect label="时间区间" options={["年", "月", "日"]} />
-            <Button variant="primary">查询</Button>
           </div>
           <div className="stat-grid">
             {["事件总量", "活跃用户数", "事件排行", "事件增长趋势", "事件转化率"].map((label) => (
@@ -549,7 +546,6 @@ function OrgManagement() {
     <section className="card page-card">
       <div className="filters">
         <FilterInput label="组织检索" placeholder="组织检索" />
-        <Button variant="primary">查询</Button>
         <Button icon={Network}>组织数据对接</Button>
       </div>
       <DataTable columns={["组织姓名", "父组织名称"]} rows={orgRows} />
@@ -562,7 +558,6 @@ function UserManagement({ openModal }: { openModal: (type: ModalType, payload?: 
     <section className="card page-card">
       <div className="filters">
         <FilterInput label="用户检索" placeholder="用户检索" />
-        <Button variant="primary">查询</Button>
         <Button icon={Network}>用户数据对接</Button>
         <Button variant="primary" icon={Plus} onClick={() => openModal("user")}>用户注册</Button>
       </div>
@@ -579,7 +574,6 @@ function RoleManagement({ openModal }: { openModal: (type: ModalType, payload?: 
         <FilterInput label="角色ID" placeholder="角色ID" />
         <FilterInput label="角色名称" placeholder="角色名称" />
         <FilterSelect label="状态" options={["启用", "禁用", "废弃"]} />
-        <Button variant="primary">查询</Button>
         <Button variant="primary" icon={Plus} onClick={() => openModal("role")}>新建</Button>
       </div>
       <DataTable
@@ -634,7 +628,6 @@ function ApiResources() {
         <CardHeader title="接口调用文档展示" />
         <div className="filters">
           <FilterInput label="模块 / 路径 / 关键词" placeholder="模块 / 路径 / 关键词" />
-          <Button variant="primary">查询</Button>
         </div>
         <DataTable
           columns={["接口名称", "请求方法", "参数列表", "返回格式", "示例请求", "响应结果", "错误码说明"]}
@@ -650,7 +643,6 @@ function ApiResources() {
           <FilterInput label="时间范围" placeholder="时间范围" />
           <FilterSelect label="调用结果" options={["成功", "失败"]} />
           <FilterInput label="接口名称" placeholder="接口名称" />
-          <Button variant="primary">查询</Button>
         </div>
         <DataTable columns={["调用时间", "调用方IP", "接口地址", "请求参数", "响应结果", "调用耗时", "错误信息"]} rows={apiLogRows.map((row) => ({ ...row, 响应结果: <StatusTag value={row.响应结果} /> }))} />
       </section>
