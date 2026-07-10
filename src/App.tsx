@@ -260,8 +260,8 @@ function FilterInput({
       <span className="filter-label">{label}</span>
       {searchable ? (
         <span className="filter-search-control">
-          <Search aria-hidden="true" size={16} />
           <input aria-label={label} placeholder={placeholder} />
+          <Search aria-hidden="true" size={16} />
         </span>
       ) : (
         <input className="filter-control" aria-label={label} placeholder={placeholder} />

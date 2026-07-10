@@ -1321,6 +1321,7 @@ textarea:focus-visible {
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-small);
 }
 
@@ -1333,8 +1334,9 @@ textarea:focus-visible {
 }
 
 .filter-search-control input {
-  width: 100%;
+  width: auto;
   min-width: 0;
+  flex: 1 1 auto;
   height: 100%;
   padding: 0;
   color: var(--gkx-text-primary);
