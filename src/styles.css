@@ -1298,6 +1298,7 @@ textarea:focus-visible {
 }
 
 .filter-control,
+.filter-search-control,
 .filter-select-control {
   width: 100%;
   min-width: 0;
@@ -1316,7 +1317,35 @@ textarea:focus-visible {
   outline: 0;
 }
 
-.filter-control::placeholder {
+.filter-search-control {
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-small);
+}
+
+.filter-search-control svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  color: var(--gkx-text-tertiary);
+  stroke-width: 1.2;
+}
+
+.filter-search-control input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  color: var(--gkx-text-primary);
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font: inherit;
+}
+
+.filter-control::placeholder,
+.filter-search-control input::placeholder {
   color: var(--gkx-text-tertiary);
 }
 
@@ -1401,6 +1430,7 @@ textarea:focus-visible {
 }
 
 .filter-field:focus-within .filter-control,
+.filter-field:focus-within .filter-search-control,
 .filter-field:focus-within .filter-select-control {
   border-color: var(--gkx-brand);
   box-shadow: 0 0 0 2px rgba(22,93,255,.1);
@@ -2463,6 +2493,7 @@ tbody tr:hover {
   .btn,
   .filter-field,
   .filter-control,
+  .filter-search-control,
   .filter-select-control,
   .date-field,
   .icon-btn {

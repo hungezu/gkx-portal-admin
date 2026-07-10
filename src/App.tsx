@@ -246,11 +246,26 @@ function ActionLinks({ actions }: { actions: Array<string | false | null | undef
   );
 }
 
-function FilterInput({ label, placeholder = label }: { label: string; placeholder?: string }) {
+function FilterInput({
+  label,
+  placeholder = label,
+  searchable = false,
+}: {
+  label: string;
+  placeholder?: string;
+  searchable?: boolean;
+}) {
   return (
     <label className="filter-field">
       <span className="filter-label">{label}</span>
-      <input className="filter-control" aria-label={label} placeholder={placeholder} />
+      {searchable ? (
+        <span className="filter-search-control">
+          <Search aria-hidden="true" size={16} />
+          <input aria-label={label} placeholder={placeholder} />
+        </span>
+      ) : (
+        <input className="filter-control" aria-label={label} placeholder={placeholder} />
+      )}
     </label>
   );
 }
@@ -370,8 +385,7 @@ function ReportManagement({ openModal }: { openModal: (type: ModalType, payload?
       <div className="filters">
         <FilterSelect label="报告类型" options={reportTypeOptions} />
         <FilterSelect label="所属领域" options={["人工智能", "智能制造", "新材料", "低空经济"]} />
-        <FilterInput label="报告来源" />
-        <FilterSelect label="排序规则" options={["上传时间", "报告类型", "所属领域", "报告来源"]} />
+        <FilterInput label="报告来源" searchable />
       </div>
       <div className="table-toolbar">
         <div><Button variant="primary" icon={Upload} onClick={() => openModal("report")}>报告上传</Button></div>
