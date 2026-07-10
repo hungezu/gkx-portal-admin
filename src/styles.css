@@ -816,6 +816,152 @@ textarea:focus-visible {
   border: 0;
 }
 
+/* 截图版左侧 Tab 导航 */
+.brand,
+.sidebar-fold {
+  display: none;
+}
+
+.sidebar nav {
+  top: 28px;
+  right: 16px;
+  bottom: 24px;
+  left: 16px;
+  scrollbar-width: none;
+}
+
+.sidebar nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-section-block {
+  margin-bottom: 30px;
+}
+
+.nav-section-title {
+  min-height: 32px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  color: var(--gkx-text-tertiary);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.group-button,
+.sidebar-footer button {
+  width: 168px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px;
+  gap: 16px;
+  color: var(--gkx-text-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.group-button svg,
+.sidebar-footer svg {
+  width: 20px;
+  height: 20px;
+  color: var(--gkx-text-tertiary);
+  stroke-width: 1.8;
+}
+
+.group-button:hover,
+.sidebar-footer button:hover {
+  color: var(--gkx-text-primary);
+  background: rgba(255,255,255,.28);
+}
+
+.group-button.nav-leaf.active {
+  color: var(--gkx-brand);
+  border-color: #fff;
+  background:
+    linear-gradient(-8.38deg, rgba(255,255,255,0) 39.256%, rgba(22,93,255,.18) 114.2%),
+    rgba(255,255,255,.48);
+  box-shadow: 0 1px 12px rgba(83, 98, 144, .08);
+  font-weight: 500;
+}
+
+.group-button.nav-leaf.active svg {
+  color: var(--gkx-brand);
+}
+
+.nav-group {
+  margin-top: 22px;
+}
+
+.nav-section-title + .group-button,
+.nav-section-title + .nav-group {
+  margin-top: 8px;
+}
+
+.nav-group.has-active > .group-button {
+  color: var(--gkx-text-primary);
+  font-weight: 400;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-group.has-active > .group-button svg {
+  color: var(--gkx-text-tertiary);
+}
+
+.group-button span,
+.sidebar-footer span {
+  overflow: hidden;
+  flex: 1;
+  font-size: 16px;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-button svg:last-child {
+  right: 12px;
+  width: 16px;
+  height: 16px;
+}
+
+.group-children {
+  padding: 12px 0 0 24px;
+}
+
+.group-children button {
+  width: 144px;
+  height: 40px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  color: var(--gkx-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 16px;
+  line-height: 24px;
+  text-align: left;
+}
+
+.group-children button:hover,
+.group-children button.active {
+  color: var(--gkx-brand);
+  background: rgba(255,255,255,.24);
+}
+
+.sidebar.collapsed .group-button,
+.sidebar.collapsed .sidebar-footer button {
+  width: 52px;
+  justify-content: center;
+  padding: 0 16px;
+}
+
 .topbar,
 .topbar.wide {
   top: 0;

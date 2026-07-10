@@ -2,7 +2,6 @@ import {
   Activity,
   BarChart3,
   Bell,
-  CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -40,7 +39,8 @@ type PageKey =
   | "workflow-center"
   | "form-center"
   | "audit-content"
-  | "event-tracking"
+  | "event-info"
+  | "event-dashboard"
   | "org-management"
   | "user-management"
   | "role-management"
@@ -57,50 +57,67 @@ type ModalType =
   | "delete"
   | null;
 
-type MenuGroup = {
+type NavChild = { key: PageKey; label: string };
+
+type NavItem = {
   label: string;
   icon: LucideIcon;
-  children: { key: PageKey; label: string }[];
+  key?: PageKey;
+  children?: NavChild[];
 };
 
-const menuGroups: MenuGroup[] = [
+type NavSection = {
+  label: string;
+  items: NavItem[];
+};
+
+const navSections: NavSection[] = [
   {
     label: "系统管理",
-    icon: LayoutGrid,
-    children: [
-      { key: "report-management", label: "报告管理" },
-      { key: "event-tracking", label: "埋点管理" },
-    ],
-  },
-  {
-    label: "审核管理",
-    icon: ClipboardCheck,
-    children: [
-      { key: "workflow-center", label: "流程中心" },
-      { key: "form-center", label: "表单中心" },
-      { key: "audit-content", label: "审核内容管理" },
+    items: [
+      { key: "report-management", label: "报告管理", icon: FileText },
+      {
+        label: "审核管理",
+        icon: ShieldCheck,
+        children: [
+          { key: "workflow-center", label: "流程中心" },
+          { key: "form-center", label: "表单中心" },
+          { key: "audit-content", label: "审核内容" },
+        ],
+      },
+      {
+        label: "埋点管理",
+        icon: Activity,
+        children: [
+          { key: "event-info", label: "埋点信息" },
+          { key: "event-dashboard", label: "数据看板" },
+        ],
+      },
     ],
   },
   {
     label: "权限管理",
-    icon: ShieldCheck,
-    children: [
-      { key: "org-management", label: "组织管理" },
-      { key: "user-management", label: "用户管理" },
-      { key: "role-management", label: "角色管理" },
-      { key: "page-management", label: "页面管理" },
-      { key: "resource-management", label: "资源管理" },
-      { key: "permission-config", label: "权限配置" },
+    items: [
+      { key: "user-management", label: "用户管理", icon: Users },
+      { key: "role-management", label: "角色管理", icon: ShieldCheck },
+      { key: "page-management", label: "页面管理", icon: LayoutGrid },
+      { key: "resource-management", label: "资源管理", icon: Database },
+      { key: "permission-config", label: "权限配置", icon: KeyRound },
     ],
   },
 ];
+
+const allMenuItems = navSections.flatMap((section) =>
+  section.items.flatMap((item) => item.key ? [{ key: item.key, label: item.label }] : item.children ?? [])
+);
 
 const pageTitles: Record<PageKey, { title: string; subtitle: string }> = {
   "report-management": { title: "报告管理", subtitle: "系统管理" },
   "workflow-center": { title: "流程中心", subtitle: "审核管理" },
   "form-center": { title: "表单中心", subtitle: "审核管理" },
   "audit-content": { title: "审核内容管理", subtitle: "审核管理" },
-  "event-tracking": { title: "埋点管理", subtitle: "系统管理" },
+  "event-info": { title: "埋点信息", subtitle: "埋点管理" },
+  "event-dashboard": { title: "数据看板", subtitle: "埋点管理" },
   "org-management": { title: "组织管理", subtitle: "权限管理" },
   "user-management": { title: "用户管理", subtitle: "权限管理" },
   "role-management": { title: "角色管理", subtitle: "权限管理" },
@@ -488,8 +505,8 @@ function AuditContent() {
   );
 }
 
-function EventTracking({ openModal }: { openModal: (type: ModalType, payload?: string) => void }) {
-  const [tab, setTab] = useState<"info" | "stats">("info");
+function EventTracking({ openModal, initialTab }: { openModal: (type: ModalType, payload?: string) => void; initialTab: "info" | "stats" }) {
+  const [tab, setTab] = useState<"info" | "stats">(initialTab);
   return (
     <section className="card page-card">
       <div className="subtabs">
@@ -697,7 +714,7 @@ function PermissionConfig() {
           <div className="data-scope">
             <h3>角色分配</h3>
             <p>页面权限</p>
-            <div>{menuGroups.flatMap((group) => group.children).map((page) => <label key={page.key}><input type="checkbox" defaultChecked /><span><b>{page.label}</b><small>If a page is marked 'disabled' in Page Management, it overrides this setting.</small></span></label>)}</div>
+            <div>{allMenuItems.map((page) => <label key={page.key}><input type="checkbox" defaultChecked /><span><b>{page.label}</b><small>若页面管理中页面为禁用，则优先覆盖此处配置。</small></span></label>)}</div>
           </div>
           <div className="data-scope">
             <h3>资源权限</h3>
@@ -826,7 +843,7 @@ function ModalHeader({ title, subtitle, close }: { title: string; subtitle?: str
 }
 
 function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageKey; setActive: (p: PageKey) => void; collapsed: boolean; setCollapsed: (v: boolean) => void }) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ 系统管理: true, 审核管理: true, 权限管理: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({ 审核管理: true, 埋点管理: true });
   return (
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="brand">
@@ -837,15 +854,34 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
         <img src={collapsed ? "./assets/sidebar-collapsed.svg" : "./assets/sidebar-expanded.svg"} alt="" />
       </button>
       <nav>
-        {menuGroups.map((group) => {
-          const GroupIcon = group.icon;
-          const isOpen = expanded[group.label];
-          const hasActive = group.children.some((x) => x.key === active);
-          return <div className={`nav-group ${hasActive ? "has-active" : ""}`} key={group.label}>
-            <button className="group-button" title={collapsed ? group.label : undefined} onClick={() => collapsed ? setActive(group.children[0].key) : setExpanded({ ...expanded, [group.label]: !isOpen })}><GroupIcon size={19} />{!collapsed && <><span>{group.label}</span><ChevronDown className={isOpen ? "rotate" : ""} size={15} /></>}</button>
-            {!collapsed && isOpen && <div className="group-children">{group.children.map((item) => <button className={active === item.key ? "active" : ""} onClick={() => setActive(item.key)} key={item.key}><i />{item.label}{active === item.key && <span />}</button>)}</div>}
-          </div>;
-        })}
+        {navSections.map((section) => (
+          <div className="nav-section-block" key={section.label}>
+            {!collapsed && <div className="nav-section-title">{section.label}</div>}
+            {section.items.map((item) => {
+              const ItemIcon = item.icon;
+              const isLeafActive = item.key === active;
+              const hasActiveChild = item.children?.some((child) => child.key === active) ?? false;
+              const isOpen = expanded[item.label] ?? hasActiveChild;
+              if (item.key) {
+                return (
+                  <button className={`group-button nav-leaf ${isLeafActive ? "active" : ""}`} title={collapsed ? item.label : undefined} onClick={() => setActive(item.key!)} key={item.label}>
+                    <ItemIcon size={19} />
+                    {!collapsed && <span>{item.label}</span>}
+                  </button>
+                );
+              }
+              return (
+                <div className={`nav-group ${hasActiveChild ? "has-active" : ""}`} key={item.label}>
+                  <button className="group-button nav-parent" title={collapsed ? item.label : undefined} onClick={() => collapsed ? setActive(item.children![0].key) : setExpanded({ ...expanded, [item.label]: !isOpen })}>
+                    <ItemIcon size={19} />
+                    {!collapsed && <><span>{item.label}</span><ChevronDown className={isOpen ? "rotate" : ""} size={15} /></>}
+                  </button>
+                  {!collapsed && isOpen && <div className="group-children">{item.children?.map((child) => <button className={active === child.key ? "active" : ""} onClick={() => setActive(child.key)} key={child.key}>{child.label}</button>)}</div>}
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="sidebar-footer"><button><Settings size={18} />{!collapsed && <span>系统设置</span>}</button></div>
     </aside>
@@ -888,7 +924,8 @@ export default function App() {
     if (active === "workflow-center") return <WorkflowCenter />;
     if (active === "form-center") return <FormCenter />;
     if (active === "audit-content") return <AuditContent />;
-    if (active === "event-tracking") return <EventTracking openModal={openModal} />;
+    if (active === "event-info") return <EventTracking key="event-info" initialTab="info" openModal={openModal} />;
+    if (active === "event-dashboard") return <EventTracking key="event-dashboard" initialTab="stats" openModal={openModal} />;
     if (active === "org-management") return <OrgManagement />;
     if (active === "user-management") return <UserManagement openModal={openModal} />;
     if (active === "role-management") return <RoleManagement openModal={openModal} />;
@@ -910,7 +947,7 @@ export default function App() {
         </div>
       </main>
       <Modal type={modal.type} payload={modal.payload} close={() => setModal({ type: null, payload: "" })} />
-      {command && <div className="modal-backdrop command-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setCommand(false)}><div className="command-box"><label><Search size={20} /><input autoFocus placeholder="搜索菜单…" /><kbd>ESC</kbd></label><p>快速导航</p><div>{menuGroups.flatMap(g => g.children).map(item => <button key={item.key} onClick={() => { go(item.key); setCommand(false); }}><span><LayoutGrid size={16} />{item.label}</span><small>菜单 <ChevronRight size={14} /></small></button>)}</div></div></div>}
+      {command && <div className="modal-backdrop command-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setCommand(false)}><div className="command-box"><label><Search size={20} /><input autoFocus placeholder="搜索菜单…" /><kbd>ESC</kbd></label><p>快速导航</p><div>{allMenuItems.map(item => <button key={item.key} onClick={() => { go(item.key); setCommand(false); }}><span><LayoutGrid size={16} />{item.label}</span><small>菜单 <ChevronRight size={14} /></small></button>)}</div></div></div>}
     </div>
   );
 }
