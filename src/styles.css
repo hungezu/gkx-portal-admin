@@ -561,7 +561,6 @@ input[type="checkbox"]:not(table input):not(.resource-toolbar input):not(.asset-
   --glass-radius: 8px;
   --card-radius: 6px;
   --control-height: 32px;
-  --filter-label-width: 96px;
   --filter-actions-width: 136px;
   --table-row-height: 40px;
   --primary: var(--gkx-brand);
@@ -1277,10 +1276,11 @@ textarea:focus-visible {
 }
 
 .filter-field {
+  width: 100%;
   min-width: 0;
   height: var(--control-height);
   display: grid;
-  grid-template-columns: var(--filter-label-width, 96px) minmax(0, 1fr);
+  grid-template-columns: max-content minmax(0, 1fr);
   align-items: center;
   column-gap: var(--space-medium);
 }
