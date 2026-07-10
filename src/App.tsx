@@ -383,9 +383,9 @@ function ReportManagement({ openModal }: { openModal: (type: ModalType, payload?
   return (
     <section className="card page-card">
       <div className="filters">
-        <FilterSelect label="报告类型" options={reportTypeOptions} />
-        <FilterSelect label="所属领域" options={["人工智能", "智能制造", "新材料", "低空经济"]} />
-        <FilterInput label="报告来源" searchable />
+        <FilterSelect label="报告类型" options={["全部", ...reportTypeOptions]} />
+        <FilterSelect label="所属领域" options={["全部", "人工智能", "智能制造", "新材料", "低空经济"]} />
+        <FilterInput label="报告来源" placeholder="请输入" searchable />
       </div>
       <div className="table-toolbar">
         <div><Button variant="primary" icon={Upload} onClick={() => openModal("report")}>报告上传</Button></div>
