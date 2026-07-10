@@ -848,7 +848,7 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="brand">
         <img src="./assets/gkx-logo.png" alt="国科信" />
-        {!collapsed && <strong>门户管理系统</strong>}
+        {!collapsed && <strong>国科信门户管理系统</strong>}
       </div>
       <button className="sidebar-fold" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "展开侧栏" : "收起侧栏"}>
         <img src={collapsed ? "./assets/sidebar-collapsed.svg" : "./assets/sidebar-expanded.svg"} alt="" />
