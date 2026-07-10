@@ -830,7 +830,10 @@ textarea:focus-visible {
 }
 
 .nav-section-block {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .nav-section-title {
@@ -889,12 +892,12 @@ textarea:focus-visible {
 }
 
 .nav-group {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .nav-section-title + .group-button,
 .nav-section-title + .nav-group {
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .nav-group.has-active > .group-button {
@@ -926,6 +929,9 @@ textarea:focus-visible {
 }
 
 .group-children {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   padding: 4px 0;
 }
 
