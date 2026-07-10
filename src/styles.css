@@ -816,16 +816,11 @@ textarea:focus-visible {
   border: 0;
 }
 
-/* 截图版左侧 Tab 导航 */
-.brand,
-.sidebar-fold {
-  display: none;
-}
-
+/* 侧栏导航：保留国科信 shell 品牌区，仅调整菜单分组与 Tab 状态 */
 .sidebar nav {
-  top: 28px;
+  top: 72px;
   right: 16px;
-  bottom: 24px;
+  bottom: 64px;
   left: 16px;
   scrollbar-width: none;
 }
@@ -835,17 +830,17 @@ textarea:focus-visible {
 }
 
 .nav-section-block {
-  margin-bottom: 30px;
+  margin-bottom: 18px;
 }
 
 .nav-section-title {
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 14px;
   display: flex;
   align-items: center;
   color: var(--gkx-text-tertiary);
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 14px;
+  line-height: 22px;
   font-weight: 400;
 }
 
@@ -855,13 +850,13 @@ textarea:focus-visible {
   height: 40px;
   min-height: 40px;
   padding: 0 16px;
-  gap: 16px;
+  gap: 8px;
   color: var(--gkx-text-primary);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 16px;
-  line-height: 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 22px;
   font-weight: 400;
 }
 
@@ -869,8 +864,8 @@ textarea:focus-visible {
 .sidebar-footer svg {
   width: 20px;
   height: 20px;
-  color: var(--gkx-text-tertiary);
-  stroke-width: 1.8;
+  color: var(--gkx-text-secondary);
+  stroke-width: 1.2;
 }
 
 .group-button:hover,
@@ -894,7 +889,7 @@ textarea:focus-visible {
 }
 
 .nav-group {
-  margin-top: 22px;
+  margin-top: 4px;
 }
 
 .nav-section-title + .group-button,
@@ -918,8 +913,8 @@ textarea:focus-visible {
 .sidebar-footer span {
   overflow: hidden;
   flex: 1;
-  font-size: 16px;
-  line-height: 24px;
+  font-size: 14px;
+  line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -931,21 +926,21 @@ textarea:focus-visible {
 }
 
 .group-children {
-  padding: 12px 0 0 24px;
+  padding: 4px 0 4px 24px;
 }
 
 .group-children button {
   width: 144px;
-  height: 40px;
+  height: 36px;
   padding: 0 12px;
   display: flex;
   align-items: center;
   color: var(--gkx-text-secondary);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 6px;
-  font-size: 16px;
-  line-height: 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 22px;
   text-align: left;
 }
 
