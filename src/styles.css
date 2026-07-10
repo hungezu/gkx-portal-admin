@@ -900,11 +900,9 @@ textarea:focus-visible {
 .nav-group.has-active > .group-button {
   color: var(--gkx-brand);
   font-weight: 500;
-  border-color: #fff;
-  background:
-    linear-gradient(-8.38deg, rgba(255,255,255,0) 39.256%, rgba(22,93,255,.18) 114.2%),
-    rgba(255,255,255,.48);
-  box-shadow: 0 1px 12px rgba(83, 98, 144, .08);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
 
 .nav-group.has-active > .group-button svg {
