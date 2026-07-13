@@ -239,9 +239,11 @@ function Button({
 function ActionLinks({ actions }: { actions: Array<string | false | null | undefined> }) {
   return (
     <div className="inline-actions">
-      {actions.filter(Boolean).map((action) => (
-        <button key={action as string}>{action}</button>
-      ))}
+      {actions.filter(Boolean).map((action) => {
+        const label = action as string;
+        const isDanger = label.includes("删除") || label.includes("驳回") || label.includes("失败") || label.includes("禁用");
+        return <button className={isDanger ? "danger-action" : ""} key={label}>{label}</button>;
+      })}
     </div>
   );
 }

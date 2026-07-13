@@ -1499,11 +1499,18 @@ textarea:focus-visible {
 }
 
 .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #fff;
   border: 1px solid var(--gkx-border);
   border-radius: 4px;
 }
 
 table {
+  width: 100%;
+  min-width: 1120px;
+  border-collapse: collapse;
   table-layout: fixed;
   font-size: 14px;
   line-height: 22px;
@@ -1515,26 +1522,31 @@ td {
   padding: 0 16px;
   overflow: hidden;
   color: var(--gkx-text-secondary);
-  border-color: var(--gkx-border);
+  border-top: 1px solid var(--gkx-border);
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 14px;
+  line-height: 22px;
+  text-align: left;
 }
 
 th {
+  height: var(--table-row-height);
   color: var(--gkx-text-secondary);
   background: var(--gkx-bg-module);
   font-size: 14px;
   line-height: 22px;
   font-weight: 500;
+  border-top: 0;
 }
 
 .page-card .table-wrap th:last-child,
 .page-card .table-wrap td:last-child {
-  width: 136px;
+  width: 240px;
 }
 
 tbody tr:hover {
-  background: var(--gkx-bg-module);
+  background: #f7f8fa;
 }
 
 .title-cell {
@@ -1574,13 +1586,34 @@ tbody tr:hover {
 }
 
 .inline-actions {
+  display: flex;
   gap: 12px;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .inline-actions button {
+  padding: 0;
   color: var(--gkx-brand);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
   font-size: 14px;
   line-height: 22px;
+  white-space: nowrap;
+}
+
+.inline-actions button:hover {
+  color: var(--gkx-brand-hover);
+}
+
+.inline-actions button.danger-action {
+  color: var(--gkx-danger);
+}
+
+.inline-actions button.danger-action:hover {
+  color: #cb272d;
 }
 
 .pagination {
