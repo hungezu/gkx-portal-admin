@@ -2,6 +2,7 @@ import {
   Activity,
   BarChart3,
   Bell,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -32,7 +33,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type PageKey =
@@ -520,6 +521,7 @@ function DataTable<T extends Record<string, ReactNode>>({
   const selectedActionRows = Array.from(selectedRows, (rowIndex) => actionRows[rowIndex]).filter((actionItems): actionItems is TableAction[] => Boolean(actionItems));
   const canBatchDelete = selectedActionRows.length > 0 && selectedActionRows.every((actionItems) => actionItems.some((action) => action.label.includes("删除")));
   const tableMinWidth = 52 + columnWidths.reduce((total, width) => total + width, 0) + actionColumnWidth;
+  const tableWidth = actions ? "100%" : `${tableMinWidth}px`;
 
   const updateScrollState = () => {
     const tableWrap = tableWrapRef.current;
@@ -599,14 +601,15 @@ function DataTable<T extends Record<string, ReactNode>>({
   return (
     <>
       <div
-        className={`table-wrap ${scrollState.hasOverflow ? "is-scrollable" : ""} ${scrollState.showLeftShadow ? "has-left-shadow" : ""} ${scrollState.showRightShadow ? "has-right-shadow" : ""}`}
+        className={`table-wrap ${actions ? "has-actions" : ""} ${scrollState.hasOverflow ? "is-scrollable" : ""} ${scrollState.showLeftShadow ? "has-left-shadow" : ""} ${scrollState.showRightShadow ? "has-right-shadow" : ""}`}
         ref={tableWrapRef}
         onScroll={updateScrollState}
       >
-        <table style={{ minWidth: `${tableMinWidth}px` }}>
+        <table style={{ width: tableWidth, minWidth: `${tableMinWidth}px` }}>
           <colgroup>
             <col className="table-select-column" />
             {columnWidths.map((width, index) => <col key={columns[index]} style={{ width }} />)}
+            {actions && <col className="table-spacer-column" />}
             {actions && <col className="table-action-column" style={{ width: actionColumnWidth }} />}
           </colgroup>
           <thead>
@@ -615,6 +618,7 @@ function DataTable<T extends Record<string, ReactNode>>({
                 <input ref={selectAllRef} type="checkbox" aria-label="选择当前页全部数据" checked={allVisibleRowsSelected} onChange={toggleVisibleRows} />
               </th>
               {columns.map((column) => <th key={column}>{column}</th>)}
+              {actions && <th className="table-spacer-cell" aria-hidden="true" />}
               {actions && <th className="table-action-cell table-sticky-right">操作</th>}
             </tr>
           </thead>
@@ -631,6 +635,7 @@ function DataTable<T extends Record<string, ReactNode>>({
                       <TableCellContent value={row[column]} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} />
                     </td>
                   ))}
+                  {actions && <td className="table-spacer-cell" aria-hidden="true" />}
                   {actions && <td className="table-action-cell table-sticky-right">{actions(row)}</td>}
                 </tr>
               );
@@ -744,7 +749,7 @@ function WorkflowCenter() {
             <div className="node-property-title">节点配置表单</div>
             <div className="node-property-body">
               <label className="designer-field"><span>节点名称</span><input type="text" /></label>
-              <label className="designer-field"><span>负责人</span><select multiple><option>普通用户</option><option>机构用户</option><option>政府用户</option></select></label>
+              <div className="designer-field"><span>负责人</span><FormMultiSelect ariaLabel="负责人" options={["普通用户", "机构用户", "政府用户"]} /></div>
               <label className="designer-field"><span>节点提交条件</span><input type="text" /></label>
               <div className="designer-field">
                 <span>有多位负责人时</span>
@@ -753,19 +758,16 @@ function WorkflowCenter() {
                   <label><input type="radio" name="multi_user" />任一负责人提交后进入下一节点</label>
                 </div>
               </div>
-              <label className="designer-field">
+              <div className="designer-field">
                 <span>找不到节点负责人时</span>
-                <select defaultValue="自动提交当前待办">
-                  <option>自动提交当前待办</option>
-                  <option>将待办转给指定人员进行处理</option>
-                </select>
-              </label>
+                <FormSelect ariaLabel="找不到节点负责人时" defaultValue="自动提交当前待办" options={["自动提交当前待办", "将待办转给指定人员进行处理"]} />
+              </div>
               <div className="condition-panel">
                 <h3>按条件流转</h3>
                 {conditions.map((condition) => (
                   <div className="condition-row" key={condition.id}>
                     <input type="text" />
-                    <select defaultValue="包含"><option>包含</option><option>等于</option></select>
+                    <FormSelect ariaLabel="流转条件运算符" defaultValue="包含" options={["包含", "等于"]} />
                     <input type="text" />
                     <button type="button" className="delete-condition" onClick={() => removeCondition(condition.id)} aria-label="删除"><Trash2 size={16} /></button>
                   </div>
@@ -799,15 +801,15 @@ function FormCenter() {
           </article>
         ))}
       </div>
-      <section className="card page-card">
+      <section className="form-section">
         <CardHeader title="规则配置" />
-        <form className="modal-form">
+        <form className="page-form">
           <div className="form-row">
             <FormField label="最大长度"><input type="text" /></FormField>
             <FormField label="最大最小值"><input type="number" /></FormField>
           </div>
           <div className="form-row">
-            <FormField label="最大最小日期"><input type="date" /></FormField>
+            <FormField label="最大最小日期"><DateField /></FormField>
             <FormField label="可选项/多选"><textarea /></FormField>
           </div>
         </form>
@@ -1085,17 +1087,19 @@ function ReportModal({ close }: { close: () => void }) {
     <>
       <ModalHeader title="报告上传/信息修改" close={close} />
       <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
-        <FormField label="PDF格式文件"><input type="file" accept="application/pdf" /></FormField>
-        <div className="form-row">
-          <FormField label="报告标题"><input /></FormField>
-          <FormField label="报告类型"><select>{reportTypeOptions.map((type) => <option key={type}>{type}</option>)}</select></FormField>
+        <div className="modal-form-body">
+          <FormField label="PDF格式文件"><FileUploadField /></FormField>
+          <div className="form-row">
+            <FormField label="报告标题"><input /></FormField>
+            <FormField label="报告类型"><FormSelect options={reportTypeOptions} /></FormField>
+          </div>
+          <div className="form-row">
+            <FormField label="报告来源"><input /></FormField>
+            <FormField label="所属领域"><FormSelect options={["人工智能", "智能制造", "新材料", "低空经济"]} /></FormField>
+          </div>
+          <FormField label="上传时间"><DateField /></FormField>
+          <FormField label="内容摘要"><textarea /></FormField>
         </div>
-        <div className="form-row">
-          <FormField label="报告来源"><input /></FormField>
-          <FormField label="所属领域"><select><option>人工智能</option><option>智能制造</option><option>新材料</option><option>低空经济</option></select></FormField>
-        </div>
-        <FormField label="上传时间"><input type="date" /></FormField>
-        <FormField label="内容摘要"><textarea /></FormField>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
     </>
@@ -1107,11 +1111,13 @@ function TrackingModal({ close }: { close: () => void }) {
     <>
       <ModalHeader title="新增埋点事件" close={close} />
       <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
-        <FormField label="事件ID"><input /></FormField>
-        <FormField label="所属功能模块"><input /></FormField>
-        <FormField label="埋点标签"><input /></FormField>
-        <FormField label="埋点路径"><input /></FormField>
-        <FormField label="触发机制"><input /></FormField>
+        <div className="modal-form-body">
+          <FormField label="事件ID"><input /></FormField>
+          <FormField label="所属功能模块"><input /></FormField>
+          <FormField label="埋点标签"><input /></FormField>
+          <FormField label="埋点路径"><input /></FormField>
+          <FormField label="触发机制"><input /></FormField>
+        </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
     </>
@@ -1123,10 +1129,12 @@ function UserModal({ close }: { close: () => void }) {
     <>
       <ModalHeader title="用户注册" close={close} />
       <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
-        <FormField label="用户姓名"><input /></FormField>
-        <FormField label="手机号"><input /></FormField>
-        <FormField label="邮箱"><input /></FormField>
-        <FormField label="所属组织"><input /></FormField>
+        <div className="modal-form-body">
+          <FormField label="用户姓名"><input /></FormField>
+          <FormField label="手机号"><input /></FormField>
+          <FormField label="邮箱"><input /></FormField>
+          <FormField label="所属组织"><input /></FormField>
+        </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
     </>
@@ -1138,9 +1146,11 @@ function RoleModal({ close }: { close: () => void }) {
     <>
       <ModalHeader title="新建/编辑" close={close} />
       <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
-        <FormField label="角色名称"><input /></FormField>
-        <FormField label="角色描述"><textarea /></FormField>
-        <FormField label="状态"><select>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></FormField>
+        <div className="modal-form-body">
+          <FormField label="角色名称"><input /></FormField>
+          <FormField label="角色描述"><textarea /></FormField>
+          <FormField label="状态"><FormSelect options={statusOptions} /></FormField>
+        </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
     </>
@@ -1152,18 +1162,332 @@ function PageModal({ close }: { close: () => void }) {
     <>
       <ModalHeader title="新建/修改页面" close={close} />
       <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
-        <FormField label="标题"><input /></FormField>
-        <FormField label="地址(URL)"><input /></FormField>
-        <FormField label="父页面"><input /></FormField>
-        <FormField label="启用属性"><select>{statusOptions.map((status) => <option key={status}>{status}</option>)}</select></FormField>
+        <div className="modal-form-body">
+          <FormField label="标题"><input /></FormField>
+          <FormField label="地址(URL)"><input /></FormField>
+          <FormField label="父页面"><input /></FormField>
+          <FormField label="启用属性"><FormSelect options={statusOptions} /></FormField>
+        </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
     </>
   );
 }
 
+function FileUploadField({ id }: { id?: string }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
+  const clearFile = () => {
+    if (inputRef.current) inputRef.current.value = "";
+    setFileName("");
+  };
+  return (
+    <div className="upload-field">
+      <input
+        ref={inputRef}
+        id={id}
+        className="upload-file-input"
+        type="file"
+        accept="application/pdf"
+        onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
+      />
+      <button className="upload-trigger" type="button" onClick={() => inputRef.current?.click()}><Upload size={14} />点击上传</button>
+      <small className="upload-hint">仅支持 PDF 格式文件</small>
+      {fileName && (
+        <div className="upload-file-row">
+          <FileText size={16} />
+          <span>{fileName}</span>
+          <button type="button" aria-label="移除文件" onClick={clearFile}><X size={16} /></button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type FormSelectProps = {
+  id?: string;
+  options: string[];
+  defaultValue?: string;
+  placeholder?: string;
+  ariaLabel?: string;
+};
+
+type SelectMenuPosition = { left: number; top: number; width: number };
+
+function FormSelect({ id, options, defaultValue, placeholder = "请选择", ariaLabel }: FormSelectProps) {
+  const [selected, setSelected] = useState(defaultValue ?? options[0] ?? "");
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, options.indexOf(defaultValue ?? options[0] ?? "")));
+  const [menuPosition, setMenuPosition] = useState<SelectMenuPosition | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  const updateMenuPosition = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPosition({ left: rect.left, top: rect.bottom + 4, width: rect.width });
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    updateMenuPosition();
+    const closeOnExternalPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
+    };
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    document.addEventListener("pointerdown", closeOnExternalPointerDown);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+      document.removeEventListener("pointerdown", closeOnExternalPointerDown);
+    };
+  }, [open]);
+
+  const openMenu = () => {
+    if (!options.length) return;
+    updateMenuPosition();
+    setActiveIndex(Math.max(0, options.indexOf(selected)));
+    setOpen(true);
+  };
+
+  const moveActive = (offset: number) => {
+    if (!options.length) return;
+    setActiveIndex((current) => (current + offset + options.length) % options.length);
+  };
+
+  const selectOption = (option: string) => {
+    setSelected(option);
+    setOpen(false);
+  };
+
+  return (
+    <div
+      className={`gkx-select ${open ? "is-open" : ""}`}
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+        if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) setOpen(false);
+      }}
+    >
+      <button
+        ref={triggerRef}
+        id={id}
+        type="button"
+        role="combobox"
+        className="gkx-select-trigger"
+        aria-label={ariaLabel}
+        aria-controls={menuId}
+        aria-activedescendant={open ? `${menuId}-option-${activeIndex}` : undefined}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => {
+          if (open) setOpen(false);
+          else openMenu();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            if (!open) openMenu();
+            else moveActive(event.key === "ArrowDown" ? 1 : -1);
+          } else if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            if (!open) openMenu();
+            setActiveIndex(event.key === "Home" ? 0 : Math.max(0, options.length - 1));
+          } else if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            if (!open) openMenu();
+            else if (options[activeIndex]) selectOption(options[activeIndex]);
+          } else if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+      >
+        <span className={selected ? "" : "is-placeholder"}>{selected || placeholder}</span>
+        <ChevronDown aria-hidden="true" size={16} />
+      </button>
+      {open && menuPosition && createPortal(
+        <div
+          id={menuId}
+          ref={menuRef}
+          className="gkx-select-menu"
+          role="listbox"
+          aria-label={ariaLabel}
+          style={menuPosition}
+          onMouseDown={(event) => event.preventDefault()}
+        >
+          {options.map((option, index) => (
+            <button
+              id={`${menuId}-option-${index}`}
+              type="button"
+              role="option"
+              aria-selected={selected === option}
+              className={`${selected === option ? "active" : ""} ${activeIndex === index ? "is-active" : ""}`.trim()}
+              key={option}
+              onClick={() => {
+                setActiveIndex(index);
+                selectOption(option);
+              }}
+            >
+              {option}
+            </button>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function FormMultiSelect({ id, options, placeholder = "请选择", ariaLabel }: Omit<FormSelectProps, "defaultValue">) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [menuPosition, setMenuPosition] = useState<SelectMenuPosition | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const selectedText = selected.join("、");
+
+  const updateMenuPosition = () => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPosition({ left: rect.left, top: rect.bottom + 4, width: rect.width });
+  };
+
+  useEffect(() => {
+    if (!open) return undefined;
+    updateMenuPosition();
+    const closeOnExternalPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
+    };
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    document.addEventListener("pointerdown", closeOnExternalPointerDown);
+    return () => {
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+      document.removeEventListener("pointerdown", closeOnExternalPointerDown);
+    };
+  }, [open]);
+
+  const openMenu = () => {
+    if (!options.length) return;
+    updateMenuPosition();
+    setActiveIndex(Math.max(0, options.findIndex((option) => selected.includes(option))));
+    setOpen(true);
+  };
+
+  const moveActive = (offset: number) => {
+    if (!options.length) return;
+    setActiveIndex((current) => (current + offset + options.length) % options.length);
+  };
+
+  const toggleOption = (option: string) => {
+    setSelected((current) => (
+      current.includes(option) ? current.filter((item) => item !== option) : [...current, option]
+    ));
+  };
+
+  return (
+    <div
+      className={`gkx-select ${open ? "is-open" : ""}`}
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+        if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) setOpen(false);
+      }}
+    >
+      <button
+        ref={triggerRef}
+        id={id}
+        type="button"
+        role="combobox"
+        className="gkx-select-trigger"
+        aria-label={ariaLabel}
+        aria-controls={menuId}
+        aria-activedescendant={open ? `${menuId}-option-${activeIndex}` : undefined}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => {
+          if (open) setOpen(false);
+          else openMenu();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            if (!open) openMenu();
+            else moveActive(event.key === "ArrowDown" ? 1 : -1);
+          } else if (event.key === "Home" || event.key === "End") {
+            event.preventDefault();
+            if (!open) openMenu();
+            setActiveIndex(event.key === "Home" ? 0 : Math.max(0, options.length - 1));
+          } else if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            if (!open) openMenu();
+            else if (options[activeIndex]) toggleOption(options[activeIndex]);
+          } else if (event.key === "Escape") {
+            setOpen(false);
+          }
+        }}
+      >
+        <span className={selectedText ? "" : "is-placeholder"}>{selectedText || placeholder}</span>
+        <ChevronDown aria-hidden="true" size={16} />
+      </button>
+      {open && menuPosition && createPortal(
+        <div
+          id={menuId}
+          ref={menuRef}
+          className="gkx-select-menu gkx-multiselect-menu"
+          role="listbox"
+          aria-label={ariaLabel}
+          aria-multiselectable="true"
+          style={menuPosition}
+          onMouseDown={(event) => event.preventDefault()}
+        >
+          {options.map((option, index) => {
+            const isSelected = selected.includes(option);
+            return (
+              <button
+                id={`${menuId}-option-${index}`}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                className={`${isSelected ? "is-selected" : ""} ${activeIndex === index ? "is-active" : ""}`.trim()}
+                key={option}
+                onClick={() => {
+                  setActiveIndex(index);
+                  toggleOption(option);
+                }}
+              >
+                <i aria-hidden="true" />
+                {option}
+              </button>
+            );
+          })}
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function DateField({ id }: { id?: string }) {
+  return (
+    <span className="date-field-control">
+      <input id={id} type="date" />
+      <CalendarDays aria-hidden="true" size={16} />
+    </span>
+  );
+}
+
 function FormField({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
-  return <label className="form-field"><span>{required && <em>*</em>}{label}</span>{children}</label>;
+  const fieldId = useId();
+  const control = isValidElement<{ id?: string }>(children) ? cloneElement(children, { id: fieldId }) : children;
+  return <div className="form-field"><label className="form-field-label" htmlFor={fieldId}>{required && <em>*</em>}{label}</label>{control}</div>;
 }
 
 function ModalHeader({ title, subtitle, close }: { title: string; subtitle?: string; close: () => void }) {
