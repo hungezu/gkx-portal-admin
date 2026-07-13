@@ -59,6 +59,17 @@ type ModalType =
   | "delete"
   | null;
 
+type ModalMode = "create" | "edit" | "detail" | "batch";
+type ModalPayload = Record<string, string>;
+type ModalSave = (values: ModalPayload) => void;
+type ModalOptions = {
+  mode?: ModalMode;
+  payload?: ModalPayload;
+  onConfirm?: () => void;
+  onSave?: ModalSave;
+};
+type OpenModal = (type: ModalType, options?: ModalOptions) => void;
+
 type NavChild = { key: PageKey; label: string };
 
 type NavItem = {
@@ -140,10 +151,10 @@ const reportRows = [
   { 报告标题: "洞察分析报告：低空经济", 报告类型: "洞察分析报告", 报告来源: "洞察分析组", 所属领域: "低空经济", 上传时间: "2026-06-28", 内容摘要: "洞察分析报告内容摘要", 状态: "下架", 是否置顶: "是" },
 ];
 
-const workflowRows = [
-  { 名称: "报告审核流程", 发布时间: "2026-07-08", 发布状态: "发布" },
-  { 名称: "认证学者审核流程", 发布时间: "2026-07-05", 发布状态: "下架" },
-  { 名称: "评论审核流程", 发布时间: "2026-07-01", 发布状态: "发布" },
+const initialWorkflowRows = [
+  { id: "workflow-report", 名称: "报告审核流程", 发布时间: "2026-07-08", 发布状态: "发布" },
+  { id: "workflow-scholar", 名称: "认证学者审核流程", 发布时间: "2026-07-05", 发布状态: "下架" },
+  { id: "workflow-comment", 名称: "评论审核流程", 发布时间: "2026-07-01", 发布状态: "发布" },
 ];
 
 const commentRows = [
@@ -166,6 +177,40 @@ const trackingRows = [
   { 事件ID: "EVT_USER_REGISTER", 所属功能模块: "用户管理", 埋点标签: "用户注册", 埋点路径: "/user/register", 触发机制: "提交" },
   { 事件ID: "EVT_ROLE_CONFIG", 所属功能模块: "权限配置", 埋点标签: "权限配置", 埋点路径: "/permission/config", 触发机制: "保存" },
 ];
+
+type TimeInterval = "年" | "月" | "日";
+
+type DashboardData = {
+  eventTotal: string;
+  activeUsers: string;
+  conversionRate: string;
+  trend: Array<{ label: string; value: number }>;
+  ranking: Array<{ label: string; value: number }>;
+};
+
+const eventDashboardData: Record<TimeInterval, DashboardData> = {
+  年: {
+    eventTotal: "24,860",
+    activeUsers: "6,420",
+    conversionRate: "32.8%",
+    trend: [{ label: "1月", value: 1820 }, { label: "3月", value: 2360 }, { label: "5月", value: 3180 }, { label: "7月", value: 4020 }, { label: "9月", value: 4770 }, { label: "11月", value: 5360 }],
+    ranking: [{ label: "报告查看", value: 6840 }, { label: "用户注册", value: 4260 }, { label: "权限配置", value: 3180 }],
+  },
+  月: {
+    eventTotal: "8,460",
+    activeUsers: "2,180",
+    conversionRate: "30.6%",
+    trend: [{ label: "第1周", value: 1260 }, { label: "第2周", value: 1420 }, { label: "第3周", value: 1780 }, { label: "第4周", value: 2050 }],
+    ranking: [{ label: "报告查看", value: 2280 }, { label: "用户注册", value: 1460 }, { label: "权限配置", value: 980 }],
+  },
+  日: {
+    eventTotal: "1,286",
+    activeUsers: "438",
+    conversionRate: "28.4%",
+    trend: [{ label: "09:00", value: 126 }, { label: "11:00", value: 214 }, { label: "13:00", value: 168 }, { label: "15:00", value: 246 }, { label: "17:00", value: 312 }, { label: "19:00", value: 220 }],
+    ranking: [{ label: "报告查看", value: 362 }, { label: "用户注册", value: 216 }, { label: "权限配置", value: 148 }],
+  },
+};
 
 const orgRows = [
   { 组织姓名: "国科信", 父组织名称: "-" },
@@ -291,12 +336,24 @@ function getOrderedActions(actions: ActionSource): TableAction[] {
     .sort((a, b) => a.priority - b.priority || a.index - b.index);
 }
 
-function ActionLinks({ actions }: { actions: ActionSource }) {
+function ActionLinks({ actions, onAction }: { actions: ActionSource; onAction?: (action: string) => void }) {
   const orderedActions = getOrderedActions(actions);
   return (
     <div className="inline-actions">
       {orderedActions.map(({ originalLabel, label, isDanger }) => {
-        return <button aria-label={originalLabel} className={isDanger ? "danger-action" : ""} key={originalLabel}>{label}</button>;
+        return (
+          <button
+            aria-label={originalLabel}
+            className={isDanger ? "danger-action" : ""}
+            key={originalLabel}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAction?.(originalLabel);
+            }}
+          >
+            {label}
+          </button>
+        );
       })}
     </div>
   );
@@ -340,9 +397,20 @@ function FilterInput({
   );
 }
 
-function FilterSelect({ label, options }: { label: string; options: string[] }) {
-  const [selected, setSelected] = useState(options[0]);
+function FilterSelect({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
+  const [internalSelected, setInternalSelected] = useState(options[0]);
   const [open, setOpen] = useState(false);
+  const selected = value ?? internalSelected;
   return (
     <div className="filter-field">
       <span className="filter-label">{label}</span>
@@ -376,7 +444,8 @@ function FilterSelect({ label, options }: { label: string; options: string[] }) 
                 className={selected === option ? "active" : ""}
                 key={option}
                 onClick={() => {
-                  setSelected(option);
+                  if (value === undefined) setInternalSelected(option);
+                  onChange?.(option);
                   setOpen(false);
                 }}
               >
@@ -594,10 +663,16 @@ function DataTable<T extends Record<string, ReactNode>>({
   columns,
   rows,
   actions,
+  rowKey,
+  onRowClick,
+  activeRowKey,
 }: {
   columns: string[];
   rows: T[];
   actions?: (row: T) => ReactNode;
+  rowKey?: (row: T, index: number) => string | number;
+  onRowClick?: (row: T, index: number) => void;
+  activeRowKey?: string | number | null;
 }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -723,10 +798,16 @@ function DataTable<T extends Record<string, ReactNode>>({
           <tbody>
             {pageRows.map((row, pageIndex) => {
               const rowIndex = pageStart + pageIndex;
+              const key = rowKey?.(row, rowIndex) ?? rowIndex;
+              const isActiveRow = activeRowKey !== undefined && activeRowKey === key;
               return (
-                <tr className={selectedRows.has(rowIndex) ? "is-selected" : ""} key={rowIndex}>
+                <tr
+                  className={`${selectedRows.has(rowIndex) ? "is-selected" : ""} ${isActiveRow ? "is-active" : ""}`.trim()}
+                  key={key}
+                  onClick={onRowClick ? () => onRowClick(row, rowIndex) : undefined}
+                >
                   <td className="table-select-cell table-sticky-left">
-                    <input type="checkbox" aria-label={`选择第 ${rowIndex + 1} 条数据`} checked={selectedRows.has(rowIndex)} onChange={() => toggleRow(rowIndex)} />
+                    <input type="checkbox" aria-label={`选择第 ${rowIndex + 1} 条数据`} checked={selectedRows.has(rowIndex)} onClick={(event) => event.stopPropagation()} onChange={() => toggleRow(rowIndex)} />
                   </td>
                   {columns.map((column) => (
                     <td key={column}>
@@ -759,7 +840,13 @@ function DataTable<T extends Record<string, ReactNode>>({
   );
 }
 
-function ReportManagement({ openModal }: { openModal: (type: ModalType, payload?: string) => void }) {
+function ReportManagement({ openModal }: { openModal: OpenModal }) {
+  const [reports, setReports] = useState(reportRows);
+
+  const updateReport = (title: string, patch: Partial<(typeof reportRows)[number]>) => {
+    setReports((list) => list.map((report) => (report.报告标题 === title ? { ...report, ...patch } : report)));
+  };
+
   return (
     <section className="card page-card">
       <div className="filters">
@@ -768,156 +855,333 @@ function ReportManagement({ openModal }: { openModal: (type: ModalType, payload?
         <FilterInput label="报告来源" placeholder="请输入" searchable />
       </div>
       <div className="table-toolbar">
-        <div><Button variant="primary" icon={Upload} onClick={() => openModal("report")}>报告上传</Button></div>
+        <div>
+          <Button
+            variant="primary"
+            icon={Upload}
+            onClick={() => openModal("report", {
+              mode: "create",
+              onSave: (values) => setReports((list) => [
+                ...list,
+                {
+                  报告标题: values.报告标题,
+                  报告类型: values.报告类型,
+                  报告来源: values.报告来源,
+                  所属领域: values.所属领域,
+                  上传时间: values.上传时间,
+                  内容摘要: values.内容摘要,
+                  状态: "上架",
+                  是否置顶: "否",
+                },
+              ]),
+            })}
+          >报告上传</Button>
+        </div>
       </div>
       <DataTable
         columns={["报告标题", "报告类型", "报告来源", "所属领域", "上传时间", "内容摘要", "状态", "是否置顶"]}
-        rows={reportRows.map((row) => ({ ...row, 原始状态: row.状态, 状态: <StatusTag value={row.状态} /> }))}
+        rows={reports.map((row) => ({ ...row, 原始状态: row.状态, 状态: <StatusTag value={row.状态} /> }))}
         actions={(row) => (
-          <ActionLinks actions={[
-            row.原始状态 === "下架" ? "报告上架" : "报告下架",
-            "信息修改",
-            row.原始状态 === "下架" && "报告删除",
-            row.是否置顶 === "是" ? "取消置顶" : "置顶",
-          ]} />
+          <ActionLinks
+            actions={[
+              row.原始状态 === "下架" ? "报告上架" : "报告下架",
+              "信息修改",
+              row.原始状态 === "下架" && "报告删除",
+              row.是否置顶 === "是" ? "取消置顶" : "置顶",
+            ]}
+            onAction={(action) => {
+              const title = String(row.报告标题);
+              const report = reports.find((item) => item.报告标题 === title);
+              if (!report) return;
+              if (action === "报告上架" || action === "报告下架") updateReport(title, { 状态: action === "报告上架" ? "上架" : "下架" });
+              if (action === "置顶" || action === "取消置顶") updateReport(title, { 是否置顶: action === "置顶" ? "是" : "否" });
+              if (action === "信息修改") {
+                openModal("report", {
+                  mode: "edit",
+                  payload: report,
+                  onSave: (values) => updateReport(title, values),
+                });
+              }
+              if (action === "报告删除") {
+                openModal("delete", {
+                  payload: { message: `确认删除${title}？` },
+                  onConfirm: () => setReports((list) => list.filter((item) => item.报告标题 !== title)),
+                });
+              }
+            }}
+          />
         )}
       />
     </section>
   );
 }
 
-function WorkflowCenter() {
-  const [selectedNode, setSelectedNode] = useState<"start" | "process" | "cc" | "end">("process");
-  const [conditions, setConditions] = useState([{ id: 1 }]);
-  const nodeCards: Array<{ key: "start" | "process" | "cc" | "end"; title: string; note?: string; locked?: boolean; active?: boolean }> = [
-    { key: "start", title: "流程发起节点", note: "系统默认，不可删除", locked: true },
-    { key: "end", title: "流程结束节点", note: "系统默认，不可删除", locked: true },
-    { key: "process", title: "流程节点", active: selectedNode === "process" },
-    { key: "cc", title: "抄送节点", active: selectedNode === "cc" },
-  ];
-  const addCondition = () => setConditions((list) => [...list, { id: Date.now() }]);
-  const removeCondition = (id: number) => setConditions((list) => (list.length > 1 ? list.filter((item) => item.id !== id) : list));
+type WorkflowNodeType = "start" | "process" | "cc" | "end";
+
+type WorkflowCondition = {
+  id: string;
+  field: string;
+  operator: "包含" | "等于";
+  value: string;
+};
+
+type WorkflowNode = {
+  id: string;
+  type: WorkflowNodeType;
+  节点名称: string;
+  负责人: string[];
+  节点提交条件: string;
+  多位负责人规则: "所有负责人提交后进入下一节点" | "任一负责人提交后进入下一节点";
+  找不到负责人处理: "自动提交当前待办" | "将待办转给指定人员进行处理";
+  流转条件: WorkflowCondition[];
+};
+
+const workflowNodeLabels: Record<WorkflowNodeType, string> = {
+  start: "流程发起节点",
+  process: "流程节点",
+  cc: "抄送节点",
+  end: "流程结束节点",
+};
+
+function createWorkflowNodes(workflowId: string): WorkflowNode[] {
+  const createNode = (type: WorkflowNodeType, suffix: string): WorkflowNode => ({
+    id: `${workflowId}-${suffix}`,
+    type,
+    节点名称: workflowNodeLabels[type],
+    负责人: [],
+    节点提交条件: "",
+    多位负责人规则: "所有负责人提交后进入下一节点",
+    找不到负责人处理: "自动提交当前待办",
+    流转条件: type === "process" ? [{ id: `${workflowId}-${suffix}-condition`, field: "", operator: "包含", value: "" }] : [],
+  });
+  return [createNode("start", "start"), createNode("process", "process"), createNode("end", "end")];
+}
+
+function WorkflowCenter({ openModal }: { openModal: OpenModal }) {
+  const [view, setView] = useState<"management" | "designer">("management");
+  const [workflowList, setWorkflowList] = useState(initialWorkflowRows);
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  const [nodesByWorkflow, setNodesByWorkflow] = useState<Record<string, WorkflowNode[]>>(() => Object.fromEntries(initialWorkflowRows.map((workflow) => [workflow.id, createWorkflowNodes(workflow.id)])));
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const selectedWorkflow = workflowList.find((workflow) => workflow.id === selectedWorkflowId) ?? null;
+  const currentNodes = selectedWorkflowId ? nodesByWorkflow[selectedWorkflowId] ?? [] : [];
+  const selectedNode = currentNodes.find((node) => node.id === selectedNodeId) ?? currentNodes[0] ?? null;
+
+  const openDesigner = (workflowId: string) => {
+    const nodes = nodesByWorkflow[workflowId] ?? createWorkflowNodes(workflowId);
+    if (!nodesByWorkflow[workflowId]) setNodesByWorkflow((current) => ({ ...current, [workflowId]: nodes }));
+    setSelectedWorkflowId(workflowId);
+    setSelectedNodeId(nodes[0]?.id ?? null);
+    setView("designer");
+  };
+
+  const updateWorkflowStatus = (workflowId: string, 发布状态: string) => {
+    setWorkflowList((list) => list.map((workflow) => (workflow.id === workflowId ? { ...workflow, 发布状态 } : workflow)));
+  };
+
+  const updateNode = (nodeId: string, patch: Partial<WorkflowNode>) => {
+    if (!selectedWorkflowId) return;
+    setNodesByWorkflow((current) => ({
+      ...current,
+      [selectedWorkflowId]: (current[selectedWorkflowId] ?? []).map((node) => (node.id === nodeId ? { ...node, ...patch } : node)),
+    }));
+  };
+
+  const addNode = (type: "process" | "cc") => {
+    if (!selectedWorkflowId) return;
+    const nodeId = `${selectedWorkflowId}-${type}-${Date.now()}`;
+    const nextNode: WorkflowNode = {
+      id: nodeId,
+      type,
+      节点名称: workflowNodeLabels[type],
+      负责人: [],
+      节点提交条件: "",
+      多位负责人规则: "所有负责人提交后进入下一节点",
+      找不到负责人处理: "自动提交当前待办",
+      流转条件: type === "process" ? [{ id: `${nodeId}-condition`, field: "", operator: "包含", value: "" }] : [],
+    };
+    setNodesByWorkflow((current) => {
+      const nodes = current[selectedWorkflowId] ?? [];
+      const endIndex = Math.max(0, nodes.findIndex((node) => node.type === "end"));
+      const next = [...nodes];
+      next.splice(endIndex, 0, nextNode);
+      return { ...current, [selectedWorkflowId]: next };
+    });
+    setSelectedNodeId(nextNode.id);
+  };
+
+  const updateCondition = (conditionId: string, patch: Partial<WorkflowCondition>) => {
+    if (!selectedNode) return;
+    updateNode(selectedNode.id, { 流转条件: selectedNode.流转条件.map((condition) => (condition.id === conditionId ? { ...condition, ...patch } : condition)) });
+  };
+
+  const addCondition = () => {
+    if (!selectedNode) return;
+    updateNode(selectedNode.id, { 流转条件: [...selectedNode.流转条件, { id: `${selectedNode.id}-${Date.now()}`, field: "", operator: "包含", value: "" }] });
+  };
+
+  const removeCondition = (conditionId: string) => {
+    if (!selectedNode || selectedNode.流转条件.length <= 1) return;
+    updateNode(selectedNode.id, { 流转条件: selectedNode.流转条件.filter((condition) => condition.id !== conditionId) });
+  };
+
+  if (view === "management") {
+    return (
+      <section className="card page-card workflow-management">
+        <div className="workflow-management-label">表单页面管理</div>
+        <DataTable
+          columns={["名称", "发布时间", "发布状态"]}
+          rows={workflowList.map((workflow) => ({ ...workflow, 原始发布状态: workflow.发布状态, 发布状态: <StatusTag value={workflow.发布状态} /> }))}
+          rowKey={(row) => String(row.id)}
+          activeRowKey={selectedWorkflowId}
+          onRowClick={(row) => openDesigner(String(row.id))}
+          actions={(row) => (
+            <ActionLinks
+              actions={[row.原始发布状态 === "发布" ? "下架" : "发布", "编辑", "删除"]}
+              onAction={(action) => {
+                const workflowId = String(row.id);
+                if (action === "编辑") openDesigner(workflowId);
+                if (action === "发布" || action === "下架") updateWorkflowStatus(workflowId, action === "发布" ? "发布" : "下架");
+                if (action === "删除") {
+                  openModal("delete", {
+                    payload: { message: `确认删除${row.名称}？` },
+                    onConfirm: () => setWorkflowList((list) => list.filter((workflow) => workflow.id !== workflowId)),
+                  });
+                }
+              }}
+            />
+          )}
+        />
+      </section>
+    );
+  }
 
   return (
-    <div className="reports-page">
-      <section className="card process-designer">
-        <header className="process-designer-header">
-          <div className="process-breadcrumb">
-            <span>审核管理</span>
-            <i>/</i>
-            <strong>流程中心</strong>
-          </div>
-          <Button variant="primary">发布</Button>
-        </header>
-        <div className="process-designer-main">
-          <aside className="node-palette">
-            <div className="node-palette-title">流程设计器节点</div>
-            <div className="node-list">
-              {nodeCards.map((node) => (
+    <section className="process-designer workflow-designer">
+      <header className="process-designer-header">
+        <div className="workflow-designer-title">
+          <Button variant="text" icon={ChevronLeft} onClick={() => setView("management")}>返回</Button>
+          <strong>流程设计表单</strong>
+        </div>
+        <Button variant="primary" onClick={() => selectedWorkflow && updateWorkflowStatus(selectedWorkflow.id, "发布")}>发布</Button>
+      </header>
+      <div className="process-designer-main">
+        <aside className="node-palette">
+          <div className="node-palette-title">流程设计器节点</div>
+          <div className="node-list">
+            {(["start", "end", "process", "cc"] as WorkflowNodeType[]).map((type) => {
+              const isDefaultNode = type === "start" || type === "end";
+              const existingNode = currentNodes.find((node) => node.type === type);
+              return (
                 <button
-                  key={node.key}
+                  key={type}
                   type="button"
-                  className={`node-card ${node.locked ? "locked" : ""} ${node.active ? "active" : ""}`}
-                  onClick={() => !node.locked && setSelectedNode(node.key)}
-                  disabled={node.locked}
+                  className={`node-card ${isDefaultNode ? "locked" : ""} ${existingNode?.id === selectedNode?.id ? "active" : ""}`}
+                  onClick={() => isDefaultNode ? setSelectedNodeId(existingNode?.id ?? null) : addNode(type)}
                 >
-                  <span className={`node-icon ${node.key}`}>
-                    {node.key === "process" ? <CircleUserRound size={16} /> : node.key === "cc" ? <FileText size={16} /> : <i />}
-                  </span>
-                  <span><b>{node.title}</b>{node.note && <small>{node.note}</small>}</span>
+                  <span className={`node-icon ${type}`}>{type === "process" ? <CircleUserRound size={16} /> : type === "cc" ? <FileText size={16} /> : <i />}</span>
+                  <span><b>{workflowNodeLabels[type]}</b>{isDefaultNode && <small>系统默认，不可删除</small>}</span>
                 </button>
-              ))}
-            </div>
-          </aside>
+              );
+            })}
+          </div>
+        </aside>
 
-          <section className="designer-canvas" aria-label="流程中心">
-            <div className="flow-strip">
-              <button className="flow-terminal start" onClick={() => setSelectedNode("start")} aria-label="流程发起节点"><span /></button>
-              <i className="flow-connector" />
-              <button className={`canvas-node ${selectedNode === "process" ? "active" : ""}`} onClick={() => setSelectedNode("process")}>
-                <CircleUserRound size={16} />
-                <span>流程节点</span>
-              </button>
-              <i className="flow-connector" />
-              <button className="flow-terminal end" onClick={() => setSelectedNode("end")} aria-label="流程结束节点"><span /></button>
-            </div>
-          </section>
+        <section className="designer-canvas" aria-label="流程设计表单">
+          <div className="flow-strip">
+            {currentNodes.map((node, index) => (
+              <div className="flow-node-group" key={node.id}>
+                <button className={`workflow-canvas-node ${node.type} ${selectedNode?.id === node.id ? "active" : ""}`} onClick={() => setSelectedNodeId(node.id)}>
+                  {node.type === "process" ? <CircleUserRound size={16} /> : node.type === "cc" ? <FileText size={16} /> : <i />}
+                  <span>{node.节点名称}</span>
+                </button>
+                {index < currentNodes.length - 1 && <i className="flow-connector" />}
+              </div>
+            ))}
+          </div>
+        </section>
 
-          <aside className="node-property">
-            <div className="node-property-title">节点配置表单</div>
+        <aside className="node-property">
+          <div className="node-property-title">节点配置表单</div>
+          {selectedNode && (
             <div className="node-property-body">
-              <label className="designer-field"><span>节点名称</span><input type="text" /></label>
-              <div className="designer-field"><span>负责人</span><FormMultiSelect ariaLabel="负责人" options={["普通用户", "机构用户", "政府用户"]} /></div>
-              <label className="designer-field"><span>节点提交条件</span><input type="text" /></label>
+              <label className="designer-field"><span>节点名称</span><input type="text" value={selectedNode.节点名称} onChange={(event) => updateNode(selectedNode.id, { 节点名称: event.target.value })} /></label>
+              <div className="designer-field"><span>负责人</span><FormMultiSelect ariaLabel="负责人" options={roleOptions} value={selectedNode.负责人} onChange={(负责人) => updateNode(selectedNode.id, { 负责人 })} /></div>
+              <label className="designer-field"><span>节点提交条件</span><input type="text" value={selectedNode.节点提交条件} onChange={(event) => updateNode(selectedNode.id, { 节点提交条件: event.target.value })} /></label>
               <div className="designer-field">
                 <span>有多位负责人时</span>
                 <div className="radio-stack">
-                  <label><input type="radio" name="multi_user" defaultChecked />所有负责人提交后进入下一节点</label>
-                  <label><input type="radio" name="multi_user" />任一负责人提交后进入下一节点</label>
+                  {(["所有负责人提交后进入下一节点", "任一负责人提交后进入下一节点"] as const).map((rule) => (
+                    <label key={rule}><input type="radio" name={`multi-user-${selectedNode.id}`} checked={selectedNode.多位负责人规则 === rule} onChange={() => updateNode(selectedNode.id, { 多位负责人规则: rule })} />{rule}</label>
+                  ))}
                 </div>
               </div>
               <div className="designer-field">
                 <span>找不到节点负责人时</span>
-                <FormSelect ariaLabel="找不到节点负责人时" defaultValue="自动提交当前待办" options={["自动提交当前待办", "将待办转给指定人员进行处理"]} />
+                <FormSelect ariaLabel="找不到节点负责人时" options={["自动提交当前待办", "将待办转给指定人员进行处理"]} value={selectedNode.找不到负责人处理} onChange={(找不到负责人处理) => updateNode(selectedNode.id, { 找不到负责人处理: 找不到负责人处理 as WorkflowNode["找不到负责人处理"] })} />
               </div>
               <div className="condition-panel">
                 <h3>按条件流转</h3>
-                {conditions.map((condition) => (
+                {selectedNode.流转条件.map((condition) => (
                   <div className="condition-row" key={condition.id}>
-                    <input type="text" />
-                    <FormSelect ariaLabel="流转条件运算符" defaultValue="包含" options={["包含", "等于"]} />
-                    <input type="text" />
+                    <input type="text" value={condition.field} onChange={(event) => updateCondition(condition.id, { field: event.target.value })} />
+                    <FormSelect ariaLabel="流转条件运算符" options={["包含", "等于"]} value={condition.operator} onChange={(operator) => updateCondition(condition.id, { operator: operator as WorkflowCondition["operator"] })} />
+                    <input type="text" value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
                     <button type="button" className="delete-condition" onClick={() => removeCondition(condition.id)} aria-label="删除"><Trash2 size={16} /></button>
                   </div>
                 ))}
                 <button type="button" className="add-condition" onClick={addCondition}><Plus size={14} />添加流转条件</button>
               </div>
             </div>
-          </aside>
-        </div>
-      </section>
-      <section className="card page-card">
-        <CardHeader title="流程实例" />
-        <DataTable columns={["名称", "发布时间", "发布状态"]} rows={workflowRows} actions={() => <ActionLinks actions={["下架", "编辑", "删除", "发布"]} />} />
-      </section>
-    </div>
+          )}
+        </aside>
+      </div>
+    </section>
   );
 }
 
 function FormCenter() {
   const components = ["单行文本", "多行文本", "数字字段", "日期时间", "单选按钮组", "复选框组", "下拉框"];
+  const [tab, setTab] = useState<"components" | "rules">("components");
   return (
     <section className="card page-card">
       <div className="resource-header">
-        <div className="resource-tabs"><button className="active">组件</button><button>规则配置</button></div>
-        <Button variant="primary" icon={FileText}>打印成表格</Button>
+        <div className="resource-tabs">
+          <button className={tab === "components" ? "active" : ""} onClick={() => setTab("components")}>组件</button>
+          <button className={tab === "rules" ? "active" : ""} onClick={() => setTab("rules")}>规则配置</button>
+        </div>
+        <Button variant="primary" icon={FileText} onClick={() => window.print()}>打印成表格</Button>
       </div>
-      <div className="role-grid">
-        {components.map((name) => (
-          <article className="role-card" key={name}>
-            <div className="role-card-head"><span><FileText size={21} /></span><div><h3>{name}</h3></div></div>
-          </article>
-        ))}
-      </div>
-      <section className="form-section">
-        <CardHeader title="规则配置" />
-        <form className="page-form">
+      {tab === "components" && (
+        <div className="role-grid">
+          {components.map((name) => (
+            <article className="role-card" key={name}>
+              <div className="role-card-head"><span><FileText size={21} /></span><div><h3>{name}</h3></div></div>
+            </article>
+          ))}
+        </div>
+      )}
+      {tab === "rules" && (
+        <form className="page-form form-center-rules">
           <div className="form-row">
             <FormField label="最大长度"><input type="text" /></FormField>
             <FormField label="最大最小值"><input type="number" /></FormField>
           </div>
           <div className="form-row">
-            <FormField label="最大最小日期"><DateField /></FormField>
-            <FormField label="可选项/多选"><textarea /></FormField>
+            <FormField label="最大最小日期"><span className="date-range-fields"><DateField /><DateField /></span></FormField>
+            <FormField label="可选项/多选"><FormSelect options={["可选项", "多选"]} /></FormField>
           </div>
         </form>
-      </section>
+      )}
     </section>
   );
 }
 
 function AuditContent() {
   const [tab, setTab] = useState<"comments" | "scholars" | "reports">("comments");
+  const [comments, setComments] = useState(commentRows);
+  const [scholars, setScholars] = useState(scholarRows);
+  const [reports, setReports] = useState(auditReportRows);
   return (
     <section className="card page-card">
       <div className="subtabs">
@@ -925,15 +1189,135 @@ function AuditContent() {
         <button className={tab === "scholars" ? "active" : ""} onClick={() => setTab("scholars")}>认证学者审核</button>
         <button className={tab === "reports" ? "active" : ""} onClick={() => setTab("reports")}>报告审核</button>
       </div>
-      {tab === "comments" && <DataTable columns={["评论内容", "渠道", "状态"]} rows={commentRows.map((row) => ({ ...row, 状态: <StatusTag value={row.状态} /> }))} actions={() => <ActionLinks actions={["审核通过", "审核失败/取消展示"]} />} />}
-      {tab === "scholars" && <DataTable columns={["学者姓名", "机构", "职称", "手机号"]} rows={scholarRows} actions={() => <ActionLinks actions={["审核通过", "审核驳回"]} />} />}
-      {tab === "reports" && <DataTable columns={["报告信息", "提交人"]} rows={auditReportRows} actions={() => <ActionLinks actions={["审核通过", "审核驳回"]} />} />}
+      {tab === "comments" && (
+        <DataTable
+          columns={["评论内容", "渠道", "状态"]}
+          rows={comments.map((row) => ({ ...row, 原始评论内容: row.评论内容, 状态: <StatusTag value={row.状态} /> }))}
+          actions={(row) => (
+            <ActionLinks
+              actions={["审核通过", "审核失败/取消展示"]}
+              onAction={(action) => {
+                const comment = String(row.原始评论内容);
+                setComments((list) => list.map((item) => (
+                  item.评论内容 === comment ? { ...item, 状态: action === "审核通过" ? "审核通过" : "审核失败" } : item
+                )));
+              }}
+            />
+          )}
+        />
+      )}
+      {tab === "scholars" && (
+        <DataTable
+          columns={["学者姓名", "机构", "职称", "手机号"]}
+          rows={scholars}
+          actions={(row) => <ActionLinks actions={["审核通过", "审核驳回"]} onAction={() => setScholars((list) => list.filter((item) => item.学者姓名 !== String(row.学者姓名)))} />}
+        />
+      )}
+      {tab === "reports" && (
+        <DataTable
+          columns={["报告信息", "提交人"]}
+          rows={reports}
+          actions={(row) => <ActionLinks actions={["审核通过", "审核驳回"]} onAction={() => setReports((list) => list.filter((item) => item.报告信息 !== String(row.报告信息)))} />}
+        />
+      )}
     </section>
   );
 }
 
-function EventTracking({ openModal, initialTab }: { openModal: (type: ModalType, payload?: string) => void; initialTab: "info" | "stats" }) {
+function DashboardMetric({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
+  return (
+    <article className="dashboard-metric">
+      <div className="dashboard-metric-icon"><Icon size={20} /></div>
+      <div><span>{label}</span><strong>{value}</strong></div>
+    </article>
+  );
+}
+
+function EventGrowthTrend({ data }: { data: DashboardData }) {
+  const width = 560;
+  const height = 220;
+  const chartTop = 20;
+  const chartBottom = 42;
+  const chartLeft = 20;
+  const chartRight = 20;
+  const max = Math.max(...data.trend.map((point) => point.value));
+  const min = Math.min(...data.trend.map((point) => point.value));
+  const span = Math.max(1, max - min);
+  const points = data.trend.map((point, index) => ({
+    ...point,
+    x: chartLeft + (index / Math.max(1, data.trend.length - 1)) * (width - chartLeft - chartRight),
+    y: chartTop + ((max - point.value) / span) * (height - chartTop - chartBottom),
+  }));
+  return (
+    <section className="dashboard-panel trend-panel">
+      <h3>事件增长趋势</h3>
+      <div className="trend-chart">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="事件增长趋势">
+          {[0, 1, 2, 3].map((line) => {
+            const y = chartTop + line * ((height - chartTop - chartBottom) / 3);
+            return <line key={line} x1={chartLeft} x2={width - chartRight} y1={y} y2={y} className="trend-grid-line" />;
+          })}
+          <polyline className="trend-line" points={points.map((point) => `${point.x},${point.y}`).join(" ")} />
+          {points.map((point) => (
+            <g key={point.label} className="trend-point">
+              <circle cx={point.x} cy={point.y} r="4"><title>{`${point.label} ${point.value}`}</title></circle>
+              <text x={point.x} y={height - 14} textAnchor="middle">{point.label}</text>
+            </g>
+          ))}
+        </svg>
+      </div>
+    </section>
+  );
+}
+
+function EventRanking({ data }: { data: DashboardData }) {
+  const max = Math.max(...data.ranking.map((item) => item.value));
+  return (
+    <section className="dashboard-panel ranking-panel">
+      <h3>事件排行</h3>
+      <ol>
+        {data.ranking.map((item, index) => (
+          <li key={item.label}>
+            <span className="ranking-index">{index + 1}</span>
+            <span className="ranking-label">{item.label}</span>
+            <span className="ranking-bar"><i style={{ width: `${(item.value / max) * 100}%` }} /></span>
+            <strong>{item.value}</strong>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function EventDashboard() {
+  const [interval, setInterval] = useState<TimeInterval>("日");
+  const data = eventDashboardData[interval];
+  return (
+    <div className="event-dashboard">
+      <div className="filters dashboard-filter">
+        <FilterSelect label="时间区间" options={["年", "月", "日"]} value={interval} onChange={(value) => setInterval(value as TimeInterval)} />
+      </div>
+      <div className="dashboard-metrics">
+        <DashboardMetric label="事件总量" value={data.eventTotal} icon={Activity} />
+        <DashboardMetric label="活跃用户数" value={data.activeUsers} icon={Users} />
+        <DashboardMetric label="事件转化率" value={data.conversionRate} icon={BarChart3} />
+      </div>
+      <div className="dashboard-data-panels">
+        <EventGrowthTrend data={data} />
+        <EventRanking data={data} />
+      </div>
+    </div>
+  );
+}
+
+function EventTracking({ openModal, initialTab }: { openModal: OpenModal; initialTab: "info" | "stats" }) {
   const [tab, setTab] = useState<"info" | "stats">(initialTab);
+  const [events, setEvents] = useState(trackingRows);
+
+  const updateEvent = (eventId: string, patch: Partial<(typeof trackingRows)[number]>) => {
+    setEvents((list) => list.map((event) => (event.事件ID === eventId ? { ...event, ...patch } : event)));
+  };
+
   return (
     <section className="card page-card">
       <div className="subtabs">
@@ -944,64 +1328,144 @@ function EventTracking({ openModal, initialTab }: { openModal: (type: ModalType,
         <>
           <div className="table-toolbar">
             <div>
-              <Button variant="primary" icon={Plus} onClick={() => openModal("tracking")}>新增埋点事件</Button>
-              <Button icon={Upload}>批量上传埋点事件</Button>
+              <Button
+                variant="primary"
+                icon={Plus}
+                onClick={() => openModal("tracking", {
+                  mode: "create",
+                  onSave: (values) => setEvents((list) => [...list, {
+                    事件ID: values.事件ID,
+                    所属功能模块: values.所属功能模块,
+                    埋点标签: values.埋点标签,
+                    埋点路径: values.埋点路径,
+                    触发机制: values.触发机制,
+                  }]),
+                })}
+              >新增埋点事件</Button>
+              <Button
+                icon={Upload}
+                onClick={() => openModal("tracking", { mode: "batch" })}
+              >批量上传埋点事件</Button>
             </div>
           </div>
-          <DataTable columns={["事件ID", "所属功能模块", "埋点标签", "埋点路径", "触发机制"]} rows={trackingRows} actions={() => <ActionLinks actions={["查询", "修改", "删除", "查看详情"]} />} />
+          <DataTable
+            columns={["事件ID", "所属功能模块", "埋点标签", "埋点路径", "触发机制"]}
+            rows={events}
+            actions={(row) => (
+              <ActionLinks
+                actions={["查询", "修改", "删除", "查看详情"]}
+                onAction={(action) => {
+                  const eventId = String(row.事件ID);
+                  const event = events.find((item) => item.事件ID === eventId);
+                  if (!event) return;
+                  if (action === "修改") {
+                    openModal("tracking", {
+                      mode: "edit",
+                      payload: event,
+                      onSave: (values) => updateEvent(eventId, values),
+                    });
+                  }
+                  if (action === "查询" || action === "查看详情") openModal("tracking", { mode: "detail", payload: event });
+                  if (action === "删除") {
+                    openModal("delete", {
+                      payload: { message: `确认删除${eventId}？` },
+                      onConfirm: () => setEvents((list) => list.filter((item) => item.事件ID !== eventId)),
+                    });
+                  }
+                }}
+              />
+            )}
+          />
         </>
       )}
-      {tab === "stats" && (
+      {tab === "stats" && <EventDashboard />}
+    </section>
+  );
+}
+
+function UserManagement({ openModal, initialTab = "users" }: { openModal: OpenModal; initialTab?: "org" | "users" }) {
+  const [tab, setTab] = useState<"org" | "users">(initialTab);
+  const [users, setUsers] = useState(userRows);
+
+  const updateUser = (userId: string, patch: Partial<(typeof userRows)[number]>) => {
+    setUsers((list) => list.map((user) => (user.用户ID === userId ? { ...user, ...patch } : user)));
+  };
+
+  return (
+    <section className="card page-card">
+      <div className="subtabs">
+        <button className={tab === "org" ? "active" : ""} onClick={() => setTab("org")}>组织管理</button>
+        <button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>用户管理</button>
+      </div>
+      {tab === "org" && (
         <>
           <div className="filters">
-            <FilterSelect label="时间区间" options={["年", "月", "日"]} />
+            <FilterInput label="组织检索" placeholder="请输入" searchable />
           </div>
-          <div className="stat-grid">
-            {["事件总量", "活跃用户数", "事件排行", "事件增长趋势", "事件转化率"].map((label) => (
-              <article className="stat-card" key={label}>
-                <div className="stat-icon"><BarChart3 size={22} /></div>
-                <div className="stat-copy"><span>{label}</span><strong>--</strong></div>
-              </article>
-            ))}
+          <div className="table-toolbar">
+            <div><Button icon={Network}>组织数据对接</Button></div>
           </div>
+          <DataTable columns={["组织姓名", "父组织名称"]} rows={orgRows} />
+        </>
+      )}
+      {tab === "users" && (
+        <>
+          <div className="filters">
+            <FilterInput label="用户检索" placeholder="请输入" searchable />
+          </div>
+          <div className="table-toolbar">
+            <div>
+              <Button icon={Network}>用户数据对接</Button>
+              <Button
+                variant="primary"
+                icon={Plus}
+                onClick={() => openModal("user", {
+                  mode: "create",
+                  onSave: (values) => setUsers((list) => [
+                    ...list,
+                    {
+                      用户ID: `U2026${String(list.length + 1).padStart(4, "0")}`,
+                      用户姓名: values.用户姓名,
+                      所属组织名称: values.所属组织,
+                      手机号: values.手机号,
+                      邮箱: values.邮箱,
+                      创建时间: "2026-07-13",
+                      账号状态: "启用",
+                    },
+                  ]),
+                })}
+              >用户注册</Button>
+            </div>
+          </div>
+          <DataTable
+            columns={["用户ID", "用户姓名", "所属组织名称", "手机号", "邮箱", "创建时间", "账号状态"]}
+            rows={users.map((row) => ({ ...row, 原始账号状态: row.账号状态, 账号状态: <StatusTag value={row.账号状态} /> }))}
+            actions={(row) => (
+              <ActionLinks
+                actions={[row.原始账号状态 === "启用" ? "禁用" : "启用", "查看详情"]}
+                onAction={(action) => {
+                  const userId = String(row.用户ID);
+                  const user = users.find((item) => item.用户ID === userId);
+                  if (!user) return;
+                  if (action === "启用" || action === "禁用") updateUser(userId, { 账号状态: action });
+                  if (action === "查看详情") openModal("user", { mode: "detail", payload: user });
+                }}
+              />
+            )}
+          />
         </>
       )}
     </section>
   );
 }
 
-function OrgManagement() {
-  return (
-    <section className="card page-card">
-      <div className="filters">
-        <FilterInput label="组织检索" placeholder="组织检索" />
-      </div>
-      <div className="table-toolbar">
-        <div><Button icon={Network}>组织数据对接</Button></div>
-      </div>
-      <DataTable columns={["组织姓名", "父组织名称"]} rows={orgRows} />
-    </section>
-  );
-}
+function RoleManagement({ openModal, onPermissionConfig }: { openModal: OpenModal; onPermissionConfig: () => void }) {
+  const [roles, setRoles] = useState(roleRows);
 
-function UserManagement({ openModal }: { openModal: (type: ModalType, payload?: string) => void }) {
-  return (
-    <section className="card page-card">
-      <div className="filters">
-        <FilterInput label="用户检索" placeholder="用户检索" />
-      </div>
-      <div className="table-toolbar">
-        <div>
-          <Button icon={Network}>用户数据对接</Button>
-          <Button variant="primary" icon={Plus} onClick={() => openModal("user")}>用户注册</Button>
-        </div>
-      </div>
-      <DataTable columns={["用户ID", "用户姓名", "所属组织名称", "手机号", "邮箱", "创建时间", "账号状态"]} rows={userRows.map((row) => ({ ...row, 原始账号状态: row.账号状态, 账号状态: <StatusTag value={row.账号状态} /> }))} actions={(row) => <ActionLinks actions={[row.原始账号状态 === "启用" ? "禁用" : "启用", "查看详情"]} />} />
-    </section>
-  );
-}
+  const updateRole = (roleId: string, patch: Partial<(typeof roleRows)[number]>) => {
+    setRoles((list) => list.map((role) => (role.角色ID === roleId ? { ...role, ...patch } : role)));
+  };
 
-function RoleManagement({ openModal }: { openModal: (type: ModalType, payload?: string) => void }) {
   return (
     <section className="card page-card">
       <div className="filters">
@@ -1010,24 +1474,112 @@ function RoleManagement({ openModal }: { openModal: (type: ModalType, payload?: 
         <FilterSelect label="状态" options={["启用", "禁用", "废弃"]} />
       </div>
       <div className="table-toolbar">
-        <div><Button variant="primary" icon={Plus} onClick={() => openModal("role")}>新建</Button></div>
+        <div>
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => openModal("role", {
+              mode: "create",
+              onSave: (values) => setRoles((list) => [
+                ...list,
+                {
+                  角色ID: `R${String(list.length + 1).padStart(3, "0")}`,
+                  角色名称: values.角色名称,
+                  角色描述: values.角色描述,
+                  状态: values.状态,
+                  创建人: "系统管理员",
+                  创建时间: "2026-07-13",
+                  最近修改人: "系统管理员",
+                  最近修改时间: "2026-07-13",
+                },
+              ]),
+            })}
+          >新建</Button>
+        </div>
       </div>
       <DataTable
         columns={["角色ID", "角色名称", "角色描述", "状态", "创建人", "创建时间", "最近修改人", "最近修改时间"]}
-        rows={roleRows.map((row) => ({ ...row, 原始状态: row.状态, 状态: <StatusTag value={row.状态} /> }))}
-        actions={(row) => <ActionLinks actions={["编辑", row.原始状态 === "废弃" && "删除", "权限配置"]} />}
+        rows={roles.map((row) => ({ ...row, 原始状态: row.状态, 状态: <StatusTag value={row.状态} /> }))}
+        actions={(row) => (
+          <ActionLinks
+            actions={["编辑", row.原始状态 === "废弃" && "删除", "权限配置"]}
+            onAction={(action) => {
+              const roleId = String(row.角色ID);
+              const role = roles.find((item) => item.角色ID === roleId);
+              if (!role) return;
+              if (action === "编辑") openModal("role", { mode: "edit", payload: role, onSave: (values) => updateRole(roleId, values) });
+              if (action === "删除") {
+                openModal("delete", {
+                  payload: { message: `确认删除${role.角色名称}？` },
+                  onConfirm: () => setRoles((list) => list.filter((item) => item.角色ID !== roleId)),
+                });
+              }
+              if (action === "权限配置") onPermissionConfig();
+            }}
+          />
+        )}
       />
     </section>
   );
 }
 
-function PageManagement({ openModal }: { openModal: (type: ModalType, payload?: string) => void }) {
+function PageManagement({ openModal }: { openModal: OpenModal }) {
+  const [pages, setPages] = useState(pageRows);
+
+  const updatePage = (url: string, patch: Partial<(typeof pageRows)[number]>) => {
+    setPages((list) => list.map((page) => (page["地址(URL)"] === url ? { ...page, ...patch } : page)));
+  };
+
   return (
     <section className="card page-card">
       <div className="table-toolbar">
-        <div><Button variant="primary" icon={Plus} onClick={() => openModal("page")}>新建/修改页面</Button></div>
+        <div>
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => openModal("page", {
+              mode: "create",
+              onSave: (values) => setPages((list) => [
+                ...list,
+                {
+                  一级页面: values.父页面 || "-",
+                  二级页面: values.标题,
+                  三级页面: "-",
+                  "地址(URL)": values["地址(URL)"],
+                  启用属性: values.启用属性,
+                },
+              ]),
+            })}
+          >新建/修改页面</Button>
+        </div>
       </div>
-      <DataTable columns={["一级页面", "二级页面", "三级页面", "地址(URL)", "启用属性"]} rows={pageRows.map((row) => ({ ...row, 启用属性: <StatusTag value={row.启用属性} /> }))} actions={() => <ActionLinks actions={["修改", "删除"]} />} />
+      <DataTable
+        columns={["一级页面", "二级页面", "三级页面", "地址(URL)", "启用属性"]}
+        rows={pages.map((row) => ({ ...row, 原始启用属性: row.启用属性, 启用属性: <StatusTag value={row.启用属性} /> }))}
+        actions={(row) => (
+          <ActionLinks
+            actions={["修改", "删除"]}
+            onAction={(action) => {
+              const url = String(row["地址(URL)"]);
+              const page = pages.find((item) => item["地址(URL)"] === url);
+              if (!page) return;
+              const payload: ModalPayload = {
+                标题: page.二级页面,
+                "地址(URL)": page["地址(URL)"],
+                父页面: page.一级页面,
+                启用属性: page.启用属性,
+              };
+              if (action === "修改") openModal("page", { mode: "edit", payload, onSave: (values) => updatePage(url, { 一级页面: values.父页面 || "-", 二级页面: values.标题, "地址(URL)": values["地址(URL)"], 启用属性: values.启用属性 }) });
+              if (action === "删除") {
+                openModal("delete", {
+                  payload: { message: `确认删除${page.二级页面}？` },
+                  onConfirm: () => setPages((list) => list.filter((item) => item["地址(URL)"] !== url)),
+                });
+              }
+            }}
+          />
+        )}
+      />
     </section>
   );
 }
@@ -1154,7 +1706,27 @@ function PermissionConfig() {
   );
 }
 
-function Modal({ type, payload, close }: { type: ModalType; payload: string; close: () => void }) {
+const reportFormFields = ["报告标题", "报告类型", "报告来源", "所属领域", "上传时间", "内容摘要"] as const;
+const trackingFormFields = ["事件ID", "所属功能模块", "埋点标签", "埋点路径", "触发机制"] as const;
+const userFormFields = ["用户姓名", "手机号", "邮箱", "所属组织"] as const;
+const roleFormFields = ["角色名称", "角色描述", "状态"] as const;
+const pageFormFields = ["标题", "地址(URL)", "父页面", "启用属性"] as const;
+
+function useModalValues(payload: ModalPayload, fields: readonly string[], aliases: Record<string, string> = {}) {
+  const makeValues = () => Object.fromEntries(fields.map((field) => [field, payload[field] ?? payload[aliases[field] ?? ""] ?? ""]));
+  const [values, setValues] = useState<ModalPayload>(makeValues);
+
+  useEffect(() => {
+    setValues(makeValues());
+  }, [payload]);
+
+  return {
+    values,
+    setValue: (field: string, value: string) => setValues((current) => ({ ...current, [field]: value })),
+  };
+}
+
+function Modal({ type, mode = "create", payload = {}, onConfirm, onSave, close }: { type: ModalType; mode?: ModalMode; payload?: ModalPayload; onConfirm?: () => void; onSave?: ModalSave; close: () => void }) {
   if (!type) return null;
   if (type === "delete") return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
@@ -1162,41 +1734,43 @@ function Modal({ type, payload, close }: { type: ModalType; payload: string; clo
         <button className="modal-close" onClick={close}><X size={18} /></button>
         <div className="confirm-icon"><Trash2 size={24} /></div>
         <h2>删除</h2>
-        <p>{payload}</p>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="danger" onClick={close}>删除</Button></div>
+        <p>{payload.message}</p>
+        <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="danger" onClick={() => { onConfirm?.(); close(); }}>删除</Button></div>
       </div>
     </div>
   );
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal form-modal">
-        {type === "report" && <ReportModal close={close} />}
-        {type === "tracking" && <TrackingModal close={close} />}
-        {type === "user" && <UserModal close={close} />}
-        {type === "role" && <RoleModal close={close} />}
-        {type === "page" && <PageModal close={close} />}
+        {type === "report" && <ReportModal close={close} payload={payload} onSave={onSave} />}
+        {type === "tracking" && mode === "batch" && <TrackingBatchModal close={close} />}
+        {type === "tracking" && mode !== "batch" && <TrackingModal close={close} mode={mode} payload={payload} onSave={onSave} />}
+        {type === "user" && <UserModal close={close} mode={mode} payload={payload} onSave={onSave} />}
+        {type === "role" && <RoleModal close={close} payload={payload} onSave={onSave} />}
+        {type === "page" && <PageModal close={close} payload={payload} onSave={onSave} />}
       </div>
     </div>
   );
 }
 
-function ReportModal({ close }: { close: () => void }) {
+function ReportModal({ close, payload, onSave }: { close: () => void; payload: ModalPayload; onSave?: ModalSave }) {
+  const { values, setValue } = useModalValues(payload, reportFormFields);
   return (
     <>
       <ModalHeader title="报告上传/信息修改" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
         <div className="modal-form-body">
           <FormField label="PDF格式文件"><FileUploadField /></FormField>
           <div className="form-row">
-            <FormField label="报告标题"><input /></FormField>
-            <FormField label="报告类型"><FormSelect options={reportTypeOptions} /></FormField>
+            <FormField label="报告标题"><input value={values.报告标题} onChange={(event) => setValue("报告标题", event.target.value)} /></FormField>
+            <FormField label="报告类型"><FormSelect options={reportTypeOptions} value={values.报告类型} onChange={(value) => setValue("报告类型", value)} /></FormField>
           </div>
           <div className="form-row">
-            <FormField label="报告来源"><input /></FormField>
-            <FormField label="所属领域"><FormSelect options={["人工智能", "智能制造", "新材料", "低空经济"]} /></FormField>
+            <FormField label="报告来源"><input value={values.报告来源} onChange={(event) => setValue("报告来源", event.target.value)} /></FormField>
+            <FormField label="所属领域"><FormSelect options={["人工智能", "智能制造", "新材料", "低空经济"]} value={values.所属领域} onChange={(value) => setValue("所属领域", value)} /></FormField>
           </div>
-          <FormField label="上传时间"><DateField /></FormField>
-          <FormField label="内容摘要"><textarea /></FormField>
+          <FormField label="上传时间"><DateField value={values.上传时间} onChange={(value) => setValue("上传时间", value)} /></FormField>
+          <FormField label="内容摘要"><textarea value={values.内容摘要} onChange={(event) => setValue("内容摘要", event.target.value)} /></FormField>
         </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
@@ -1204,50 +1778,60 @@ function ReportModal({ close }: { close: () => void }) {
   );
 }
 
-function TrackingModal({ close }: { close: () => void }) {
+function TrackingBatchModal({ close }: { close: () => void }) {
   return (
     <>
-      <ModalHeader title="新增埋点事件" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
-        <div className="modal-form-body">
-          <FormField label="事件ID"><input /></FormField>
-          <FormField label="所属功能模块"><input /></FormField>
-          <FormField label="埋点标签"><input /></FormField>
-          <FormField label="埋点路径"><input /></FormField>
-          <FormField label="触发机制"><input /></FormField>
-        </div>
+      <ModalHeader title="批量上传埋点事件" close={close} />
+      <form className="modal-form" onSubmit={(event) => { event.preventDefault(); close(); }}>
+        <div className="modal-form-body"><FileUploadField accept=".xlsx,.xls,.csv" hint="选择文件" /></div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
     </>
   );
 }
 
-function UserModal({ close }: { close: () => void }) {
+function TrackingModal({ close, mode, payload, onSave }: { close: () => void; mode: Exclude<ModalMode, "batch">; payload: ModalPayload; onSave?: ModalSave }) {
+  const { values, setValue } = useModalValues(payload, trackingFormFields);
+  const isDetail = mode === "detail";
   return (
     <>
-      <ModalHeader title="用户注册" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
+      <ModalHeader title={isDetail ? "查看详情" : "新增埋点事件"} close={close} />
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="用户姓名"><input /></FormField>
-          <FormField label="手机号"><input /></FormField>
-          <FormField label="邮箱"><input /></FormField>
-          <FormField label="所属组织"><input /></FormField>
+          {trackingFormFields.map((field) => <FormField label={field} key={field}><input readOnly={isDetail} value={values[field]} onChange={(event) => setValue(field, event.target.value)} /></FormField>)}
         </div>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
+        <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></>}</div>
       </form>
     </>
   );
 }
 
-function RoleModal({ close }: { close: () => void }) {
+function UserModal({ close, mode, payload, onSave }: { close: () => void; mode: ModalMode; payload: ModalPayload; onSave?: ModalSave }) {
+  const { values, setValue } = useModalValues(payload, userFormFields, { 所属组织: "所属组织名称" });
+  const isDetail = mode === "detail";
+  return (
+    <>
+      <ModalHeader title={isDetail ? "查看详情" : "用户注册"} close={close} />
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
+        <div className="modal-form-body">
+          {userFormFields.map((field) => <FormField label={field} key={field}><input readOnly={isDetail} value={values[field]} onChange={(event) => setValue(field, event.target.value)} /></FormField>)}
+        </div>
+        <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></>}</div>
+      </form>
+    </>
+  );
+}
+
+function RoleModal({ close, payload, onSave }: { close: () => void; payload: ModalPayload; onSave?: ModalSave }) {
+  const { values, setValue } = useModalValues(payload, roleFormFields);
   return (
     <>
       <ModalHeader title="新建/编辑" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="角色名称"><input /></FormField>
-          <FormField label="角色描述"><textarea /></FormField>
-          <FormField label="状态"><FormSelect options={statusOptions} /></FormField>
+          <FormField label="角色名称"><input value={values.角色名称} onChange={(event) => setValue("角色名称", event.target.value)} /></FormField>
+          <FormField label="角色描述"><textarea value={values.角色描述} onChange={(event) => setValue("角色描述", event.target.value)} /></FormField>
+          <FormField label="状态"><FormSelect options={statusOptions} value={values.状态} onChange={(value) => setValue("状态", value)} /></FormField>
         </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
@@ -1255,16 +1839,17 @@ function RoleModal({ close }: { close: () => void }) {
   );
 }
 
-function PageModal({ close }: { close: () => void }) {
+function PageModal({ close, payload, onSave }: { close: () => void; payload: ModalPayload; onSave?: ModalSave }) {
+  const { values, setValue } = useModalValues(payload, pageFormFields);
   return (
     <>
       <ModalHeader title="新建/修改页面" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="标题"><input /></FormField>
-          <FormField label="地址(URL)"><input /></FormField>
-          <FormField label="父页面"><input /></FormField>
-          <FormField label="启用属性"><FormSelect options={statusOptions} /></FormField>
+          <FormField label="标题"><input value={values.标题} onChange={(event) => setValue("标题", event.target.value)} /></FormField>
+          <FormField label="地址(URL)"><input value={values["地址(URL)"]} onChange={(event) => setValue("地址(URL)", event.target.value)} /></FormField>
+          <FormField label="父页面"><input value={values.父页面} onChange={(event) => setValue("父页面", event.target.value)} /></FormField>
+          <FormField label="启用属性"><FormSelect options={statusOptions} value={values.启用属性} onChange={(value) => setValue("启用属性", value)} /></FormField>
         </div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
@@ -1272,7 +1857,7 @@ function PageModal({ close }: { close: () => void }) {
   );
 }
 
-function FileUploadField({ id }: { id?: string }) {
+function FileUploadField({ id, accept = "application/pdf", hint = "仅支持 PDF 格式文件" }: { id?: string; accept?: string; hint?: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
   const clearFile = () => {
@@ -1286,11 +1871,11 @@ function FileUploadField({ id }: { id?: string }) {
         id={id}
         className="upload-file-input"
         type="file"
-        accept="application/pdf"
+        accept={accept}
         onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
       />
       <button className="upload-trigger" type="button" onClick={() => inputRef.current?.click()}><Upload size={14} />点击上传</button>
-      <small className="upload-hint">仅支持 PDF 格式文件</small>
+      <small className="upload-hint">{hint}</small>
       {fileName && (
         <div className="upload-file-row">
           <FileText size={16} />
@@ -1306,20 +1891,23 @@ type FormSelectProps = {
   id?: string;
   options: string[];
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
 };
 
 type SelectMenuPosition = { left: number; top: number; width: number };
 
-function FormSelect({ id, options, defaultValue, placeholder = "请选择", ariaLabel }: FormSelectProps) {
-  const [selected, setSelected] = useState(defaultValue ?? options[0] ?? "");
+function FormSelect({ id, options, defaultValue, value, onChange, placeholder = "请选择", ariaLabel }: FormSelectProps) {
+  const [internalSelected, setInternalSelected] = useState(defaultValue ?? options[0] ?? "");
   const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, options.indexOf(defaultValue ?? options[0] ?? "")));
+  const [activeIndex, setActiveIndex] = useState(() => Math.max(0, options.indexOf(value ?? defaultValue ?? options[0] ?? "")));
   const [menuPosition, setMenuPosition] = useState<SelectMenuPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  const selected = value ?? internalSelected;
 
   const updateMenuPosition = () => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -1358,7 +1946,8 @@ function FormSelect({ id, options, defaultValue, placeholder = "请选择", aria
   };
 
   const selectOption = (option: string) => {
-    setSelected(option);
+    if (value === undefined) setInternalSelected(option);
+    onChange?.(option);
     setOpen(false);
   };
 
@@ -1439,14 +2028,20 @@ function FormSelect({ id, options, defaultValue, placeholder = "请选择", aria
   );
 }
 
-function FormMultiSelect({ id, options, placeholder = "请选择", ariaLabel }: Omit<FormSelectProps, "defaultValue">) {
-  const [selected, setSelected] = useState<string[]>([]);
+type FormMultiSelectProps = Omit<FormSelectProps, "defaultValue" | "value" | "onChange"> & {
+  value?: string[];
+  onChange?: (value: string[]) => void;
+};
+
+function FormMultiSelect({ id, options, value, onChange, placeholder = "请选择", ariaLabel }: FormMultiSelectProps) {
+  const [internalSelected, setInternalSelected] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [menuPosition, setMenuPosition] = useState<SelectMenuPosition | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  const selected = value ?? internalSelected;
   const selectedText = selected.join("、");
 
   const updateMenuPosition = () => {
@@ -1486,9 +2081,9 @@ function FormMultiSelect({ id, options, placeholder = "请选择", ariaLabel }: 
   };
 
   const toggleOption = (option: string) => {
-    setSelected((current) => (
-      current.includes(option) ? current.filter((item) => item !== option) : [...current, option]
-    ));
+    const next = selected.includes(option) ? selected.filter((item) => item !== option) : [...selected, option];
+    if (value === undefined) setInternalSelected(next);
+    onChange?.(next);
   };
 
   return (
@@ -1573,10 +2168,10 @@ function FormMultiSelect({ id, options, placeholder = "请选择", ariaLabel }: 
   );
 }
 
-function DateField({ id }: { id?: string }) {
+function DateField({ id, value, onChange }: { id?: string; value?: string; onChange?: (value: string) => void }) {
   return (
     <span className="date-field-control">
-      <input id={id} type="date" />
+      <input id={id} type="date" value={value} onChange={(event) => onChange?.(event.target.value)} />
       <CalendarDays aria-hidden="true" size={16} />
     </span>
   );
@@ -1665,25 +2260,31 @@ export default function App() {
   const [active, setActive] = useState<PageKey>("report-management");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [modal, setModal] = useState<{ type: ModalType; payload: string }>({ type: null, payload: "" });
+  const [modal, setModal] = useState<{ type: ModalType; mode: ModalMode; payload: ModalPayload; onConfirm?: () => void; onSave?: ModalSave }>({ type: null, mode: "create", payload: {} });
   const [command, setCommand] = useState(false);
   const currentTitle = pageLabels[active];
-  const openModal = (type: ModalType, payload = "") => setModal({ type, payload });
+  const openModal: OpenModal = (type, options = {}) => setModal({
+    type,
+    mode: options.mode ?? "create",
+    payload: options.payload ?? {},
+    onConfirm: options.onConfirm,
+    onSave: options.onSave,
+  });
+  const go = (key: PageKey) => { setActive(key); setMobileOpen(false); };
   const page = useMemo(() => {
     if (active === "report-management") return <ReportManagement openModal={openModal} />;
-    if (active === "workflow-center") return <WorkflowCenter />;
+    if (active === "workflow-center") return <WorkflowCenter openModal={openModal} />;
     if (active === "form-center") return <FormCenter />;
     if (active === "audit-content") return <AuditContent />;
     if (active === "event-info") return <EventTracking key="event-info" initialTab="info" openModal={openModal} />;
     if (active === "event-dashboard") return <EventTracking key="event-dashboard" initialTab="stats" openModal={openModal} />;
-    if (active === "org-management") return <OrgManagement />;
+    if (active === "org-management") return <UserManagement key="org-management" initialTab="org" openModal={openModal} />;
     if (active === "user-management") return <UserManagement openModal={openModal} />;
-    if (active === "role-management") return <RoleManagement openModal={openModal} />;
+    if (active === "role-management") return <RoleManagement openModal={openModal} onPermissionConfig={() => go("permission-config")} />;
     if (active === "page-management") return <PageManagement openModal={openModal} />;
     if (active === "resource-management") return <ResourceManagement />;
     return <PermissionConfig />;
   }, [active]);
-  const go = (key: PageKey) => { setActive(key); setMobileOpen(false); };
   return (
     <div className={`app-shell ${collapsed ? "is-sidebar-collapsed" : ""}`}>
       <div className={mobileOpen ? "mobile-sidebar open" : "mobile-sidebar"}><Sidebar active={active} setActive={go} collapsed={collapsed} setCollapsed={setCollapsed} /></div>
@@ -1695,7 +2296,7 @@ export default function App() {
           <div className="page-body">{page}</div>
         </div>
       </main>
-      <Modal type={modal.type} payload={modal.payload} close={() => setModal({ type: null, payload: "" })} />
+      <Modal type={modal.type} mode={modal.mode} payload={modal.payload} onConfirm={modal.onConfirm} onSave={modal.onSave} close={() => setModal({ type: null, mode: "create", payload: {} })} />
       {command && <div className="modal-backdrop command-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setCommand(false)}><div className="command-box"><label><Search size={20} /><input autoFocus placeholder="搜索菜单…" /><kbd>ESC</kbd></label><p>快速导航</p><div>{allMenuItems.map(item => <button key={item.key} onClick={() => { go(item.key); setCommand(false); }}><span><LayoutGrid size={16} />{item.label}</span><small>菜单 <ChevronRight size={14} /></small></button>)}</div></div></div>}
     </div>
   );
