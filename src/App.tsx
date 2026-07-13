@@ -460,12 +460,110 @@ function getTableText(value: ReactNode) {
   return null;
 }
 
+type TableColumnWidthKind = "long" | "name" | "date" | "identifier" | "contact" | "numeric" | "compact" | "default";
+
+const tableColumnMinimumWidths: Record<string, number> = {
+  报告标题: 200,
+  报告类型: 128,
+  报告来源: 160,
+  所属领域: 120,
+  上传时间: 120,
+  内容摘要: 240,
+  状态: 96,
+  是否置顶: 96,
+  名称: 200,
+  发布时间: 120,
+  发布状态: 96,
+  评论内容: 240,
+  渠道: 120,
+  学者姓名: 120,
+  机构: 180,
+  职称: 96,
+  手机号: 128,
+  报告信息: 220,
+  提交人: 120,
+  事件ID: 180,
+  所属功能模块: 140,
+  埋点标签: 160,
+  埋点路径: 220,
+  触发机制: 96,
+  组织姓名: 180,
+  父组织名称: 180,
+  用户ID: 120,
+  用户姓名: 120,
+  所属组织名称: 180,
+  邮箱: 200,
+  创建时间: 120,
+  账号状态: 96,
+  角色ID: 96,
+  角色名称: 140,
+  角色描述: 220,
+  创建人: 128,
+  最近修改人: 128,
+  最近修改时间: 144,
+  一级页面: 140,
+  二级页面: 140,
+  三级页面: 140,
+  "地址(URL)": 240,
+  启用属性: 96,
+  接口名称: 160,
+  请求方法: 96,
+  参数列表: 240,
+  返回格式: 120,
+  示例请求: 200,
+  响应结果: 96,
+  错误码说明: 200,
+  调用时间: 144,
+  调用方IP: 128,
+  接口地址: 220,
+  请求参数: 200,
+  调用耗时: 96,
+  错误信息: 200,
+  人才库名称: 220,
+  描述: 240,
+  学者数量: 96,
+  报告名称: 220,
+  报告类型ID: 120,
+  所属学科: 160,
+  领域: 120,
+};
+
+const tableColumnMinimumWidthByKind: Record<TableColumnWidthKind, number> = {
+  long: 224,
+  name: 192,
+  date: 144,
+  identifier: 128,
+  contact: 128,
+  numeric: 104,
+  compact: 96,
+  default: 144,
+};
+
+function getTableColumnWidthKind(column: string): TableColumnWidthKind {
+  if (/(时间|日期)/.test(column)) return "date";
+  if (/(ID|编号)/.test(column)) return "identifier";
+  if (/(手机号|邮箱|IP)/.test(column)) return "contact";
+  if (/(数量|耗时)/.test(column)) return "numeric";
+  if (/(状态|是否|渠道|领域|职称|属性|方法|机制|格式|结果)/.test(column)) return "compact";
+  if (/(内容|摘要|描述|地址|路径|参数|错误|说明|示例请求|信息)/.test(column)) return "long";
+  if (/(标题|名称)/.test(column)) return "name";
+  return "default";
+}
+
+function getTextDisplayWidth(text: string) {
+  const units = Array.from(text).reduce((total, character) => (
+    total + (/^[\u2E80-\u9FFF\uF900-\uFAFF]$/.test(character) ? 1 : character === " " ? .35 : .58)
+  ), 0);
+  return Math.ceil(Math.min(units, 16) * 14 + 32);
+}
+
 function getColumnWidth<T extends Record<string, ReactNode>>(column: string, rows: T[]) {
-  const longestValue = rows.reduce((longest, row) => {
+  const contentWidth = rows.reduce((longest, row) => {
     const value = getTableText(row[column]);
-    return Math.max(longest, value ? Array.from(value).length : 0);
-  }, Array.from(column).length);
-  return Math.max(96, Math.min(longestValue, 16) * 14 + 32);
+    return Math.max(longest, value ? getTextDisplayWidth(value) : 0);
+  }, getTextDisplayWidth(column));
+  const minimumWidth = tableColumnMinimumWidths[column] ?? tableColumnMinimumWidthByKind[getTableColumnWidthKind(column)];
+  return Math.max(minimumWidth, contentWidth);
 }
 
 function TableCellContent({
