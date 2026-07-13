@@ -32,7 +32,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { isValidElement, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type PageKey =
@@ -268,24 +268,51 @@ const actionPriorities: Record<string, number> = {
   "删除": 99,
 };
 
-function ActionLinks({ actions }: { actions: Array<string | false | null | undefined> }) {
-  const orderedActions = actions
+type ActionSource = Array<string | false | null | undefined>;
+
+type TableAction = {
+  originalLabel: string;
+  label: string;
+  index: number;
+  priority: number;
+  isDanger: boolean;
+};
+
+function getOrderedActions(actions: ActionSource): TableAction[] {
+  return actions
     .filter(Boolean)
     .map((action, index) => {
       const originalLabel = action as string;
       const label = compactActionLabels[originalLabel] ?? originalLabel;
-      return { originalLabel, label, index, priority: actionPriorities[label] ?? 50 };
+      const isDanger = label.includes("删除") || label.includes("驳回") || label.includes("失败") || label.includes("禁用") || label.includes("取消展示");
+      return { originalLabel, label, index, priority: actionPriorities[label] ?? 50, isDanger };
     })
     .sort((a, b) => a.priority - b.priority || a.index - b.index);
+}
 
+function ActionLinks({ actions }: { actions: ActionSource }) {
+  const orderedActions = getOrderedActions(actions);
   return (
     <div className="inline-actions">
-      {orderedActions.map(({ originalLabel, label }) => {
-        const isDanger = label.includes("删除") || label.includes("驳回") || label.includes("失败") || label.includes("禁用") || label.includes("取消展示");
+      {orderedActions.map(({ originalLabel, label, isDanger }) => {
         return <button aria-label={originalLabel} className={isDanger ? "danger-action" : ""} key={originalLabel}>{label}</button>;
       })}
     </div>
   );
+}
+
+function getActionItems(actionNode: ReactNode): TableAction[] {
+  if (isValidElement<{ actions: ActionSource }>(actionNode) && actionNode.type === ActionLinks) {
+    return getOrderedActions(actionNode.props.actions);
+  }
+  return [];
+}
+
+function getActionColumnWidth(actionRows: TableAction[][]) {
+  return Math.max(60, ...actionRows.map((actions) => {
+    const contentWidth = actions.reduce((width, action) => width + Array.from(action.label).length * 14, 0);
+    return contentWidth + Math.max(0, actions.length - 1) * 12 + 32;
+  }));
 }
 
 function FilterInput({
@@ -476,31 +503,61 @@ function DataTable<T extends Record<string, ReactNode>>({
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(() => new Set());
-  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+  const [scrollState, setScrollState] = useState({ hasOverflow: false, showLeftShadow: false, showRightShadow: false });
   const [tooltip, setTooltip] = useState<{ content: string; left: number; top: number } | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const activePage = Math.min(currentPage, totalPages);
   const pageStart = (activePage - 1) * pageSize;
   const pageRows = rows.slice(pageStart, pageStart + pageSize);
   const visibleRowIndexes = pageRows.map((_, index) => pageStart + index);
   const allVisibleRowsSelected = visibleRowIndexes.length > 0 && visibleRowIndexes.every((index) => selectedRows.has(index));
+  const someVisibleRowsSelected = visibleRowIndexes.some((index) => selectedRows.has(index));
   const columnWidths = columns.map((column) => getColumnWidth(column, rows));
-  const tableMinWidth = 52 + columnWidths.reduce((total, width) => total + width, 0) + (actions ? 240 : 0);
+  const actionRows = actions ? rows.map((row) => getActionItems(actions(row))) : [];
+  const actionColumnWidth = actions ? getActionColumnWidth(actionRows) : 0;
+  const selectedActionRows = Array.from(selectedRows, (rowIndex) => actionRows[rowIndex]).filter((actionItems): actionItems is TableAction[] => Boolean(actionItems));
+  const canBatchDelete = selectedActionRows.length > 0 && selectedActionRows.every((actionItems) => actionItems.some((action) => action.label.includes("删除")));
+  const tableMinWidth = 52 + columnWidths.reduce((total, width) => total + width, 0) + actionColumnWidth;
+
+  const updateScrollState = () => {
+    const tableWrap = tableWrapRef.current;
+    if (!tableWrap) return;
+    const maxScrollLeft = Math.max(0, tableWrap.scrollWidth - tableWrap.clientWidth);
+    const hasOverflow = maxScrollLeft > 1;
+    const nextState = {
+      hasOverflow,
+      showLeftShadow: hasOverflow && tableWrap.scrollLeft > 1,
+      showRightShadow: hasOverflow && tableWrap.scrollLeft < maxScrollLeft - 1,
+    };
+    setScrollState((current) => (
+      current.hasOverflow === nextState.hasOverflow
+      && current.showLeftShadow === nextState.showLeftShadow
+      && current.showRightShadow === nextState.showRightShadow
+        ? current
+        : nextState
+    ));
+  };
 
   useEffect(() => {
     const tableWrap = tableWrapRef.current;
     if (!tableWrap) return undefined;
-    const updateOverflowState = () => setHasHorizontalOverflow(tableWrap.scrollWidth > tableWrap.clientWidth + 1);
-    updateOverflowState();
-    const observer = new ResizeObserver(updateOverflowState);
+    updateScrollState();
+    const observer = new ResizeObserver(updateScrollState);
     observer.observe(tableWrap);
-    window.addEventListener("resize", updateOverflowState);
+    window.addEventListener("resize", updateScrollState);
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", updateOverflowState);
+      window.removeEventListener("resize", updateScrollState);
     };
   }, [actions, columns.length, pageSize, rows.length, tableMinWidth]);
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someVisibleRowsSelected && !allVisibleRowsSelected;
+    }
+  }, [allVisibleRowsSelected, someVisibleRowsSelected]);
 
   const toggleVisibleRows = () => {
     setSelectedRows((current) => {
@@ -526,19 +583,36 @@ function DataTable<T extends Record<string, ReactNode>>({
     setTooltip({ content, left: Math.min(Math.max(8, rect.left), maxLeft), top: rect.bottom + 8 });
   };
 
+  const pagination = (
+    <Pagination
+      total={rows.length}
+      currentPage={activePage}
+      pageSize={pageSize}
+      onPageChange={setCurrentPage}
+      onPageSizeChange={(nextPageSize) => {
+        setPageSize(nextPageSize);
+        setCurrentPage(1);
+      }}
+    />
+  );
+
   return (
     <>
-      <div className={`table-wrap ${hasHorizontalOverflow ? "is-scrollable" : ""}`} ref={tableWrapRef}>
+      <div
+        className={`table-wrap ${scrollState.hasOverflow ? "is-scrollable" : ""} ${scrollState.showLeftShadow ? "has-left-shadow" : ""} ${scrollState.showRightShadow ? "has-right-shadow" : ""}`}
+        ref={tableWrapRef}
+        onScroll={updateScrollState}
+      >
         <table style={{ minWidth: `${tableMinWidth}px` }}>
           <colgroup>
             <col className="table-select-column" />
             {columnWidths.map((width, index) => <col key={columns[index]} style={{ width }} />)}
-            {actions && <col className="table-action-column" />}
+            {actions && <col className="table-action-column" style={{ width: actionColumnWidth }} />}
           </colgroup>
           <thead>
             <tr>
               <th className="table-select-cell table-sticky-left">
-                <input type="checkbox" aria-label="选择当前页全部数据" checked={allVisibleRowsSelected} onChange={toggleVisibleRows} />
+                <input ref={selectAllRef} type="checkbox" aria-label="选择当前页全部数据" checked={allVisibleRowsSelected} onChange={toggleVisibleRows} />
               </th>
               {columns.map((column) => <th key={column}>{column}</th>)}
               {actions && <th className="table-action-cell table-sticky-right">操作</th>}
@@ -548,7 +622,7 @@ function DataTable<T extends Record<string, ReactNode>>({
             {pageRows.map((row, pageIndex) => {
               const rowIndex = pageStart + pageIndex;
               return (
-                <tr key={rowIndex}>
+                <tr className={selectedRows.has(rowIndex) ? "is-selected" : ""} key={rowIndex}>
                   <td className="table-select-cell table-sticky-left">
                     <input type="checkbox" aria-label={`选择第 ${rowIndex + 1} 条数据`} checked={selectedRows.has(rowIndex)} onChange={() => toggleRow(rowIndex)} />
                   </td>
@@ -564,16 +638,16 @@ function DataTable<T extends Record<string, ReactNode>>({
           </tbody>
         </table>
       </div>
-      <Pagination
-        total={rows.length}
-        currentPage={activePage}
-        pageSize={pageSize}
-        onPageChange={setCurrentPage}
-        onPageSizeChange={(nextPageSize) => {
-          setPageSize(nextPageSize);
-          setCurrentPage(1);
-        }}
-      />
+      {selectedRows.size > 0 ? (
+        <div className="table-bottom-bar batch-selection-bar">
+          <div className="batch-selection-actions">
+            <span>已选 {selectedRows.size} 条</span>
+            {canBatchDelete && <button type="button" className="danger-action">批量删除</button>}
+            <button type="button" onClick={() => setSelectedRows(new Set())}>取消选择</button>
+          </div>
+          {pagination}
+        </div>
+      ) : pagination}
       {tooltip && createPortal(
         <div className="table-cell-tooltip" role="tooltip" style={{ left: tooltip.left, top: tooltip.top }}>{tooltip.content}</div>,
         document.body,
