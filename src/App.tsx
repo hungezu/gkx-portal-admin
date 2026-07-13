@@ -32,7 +32,8 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 type PageKey =
   | "report-management"
@@ -236,13 +237,52 @@ function Button({
   );
 }
 
+const compactActionLabels: Record<string, string> = {
+  "报告上架": "上架",
+  "报告下架": "下架",
+  "报告删除": "删除",
+  "信息修改": "编辑",
+  "查看详情": "查看",
+  "权限配置": "配置",
+  "审核通过": "通过",
+  "审核驳回": "驳回",
+  "审核失败/取消展示": "取消展示",
+};
+
+const actionPriorities: Record<string, number> = {
+  "查询": 1,
+  "查看": 2,
+  "编辑": 3,
+  "配置": 4,
+  "新增": 5,
+  "上架": 6,
+  "下架": 6,
+  "发布": 6,
+  "置顶": 7,
+  "取消置顶": 7,
+  "启用": 8,
+  "禁用": 8,
+  "通过": 8,
+  "取消展示": 8,
+  "驳回": 8,
+  "删除": 99,
+};
+
 function ActionLinks({ actions }: { actions: Array<string | false | null | undefined> }) {
+  const orderedActions = actions
+    .filter(Boolean)
+    .map((action, index) => {
+      const originalLabel = action as string;
+      const label = compactActionLabels[originalLabel] ?? originalLabel;
+      return { originalLabel, label, index, priority: actionPriorities[label] ?? 50 };
+    })
+    .sort((a, b) => a.priority - b.priority || a.index - b.index);
+
   return (
     <div className="inline-actions">
-      {actions.filter(Boolean).map((action) => {
-        const label = action as string;
-        const isDanger = label.includes("删除") || label.includes("驳回") || label.includes("失败") || label.includes("禁用");
-        return <button className={isDanger ? "danger-action" : ""} key={label}>{label}</button>;
+      {orderedActions.map(({ originalLabel, label }) => {
+        const isDanger = label.includes("删除") || label.includes("驳回") || label.includes("失败") || label.includes("禁用") || label.includes("取消展示");
+        return <button aria-label={originalLabel} className={isDanger ? "danger-action" : ""} key={originalLabel}>{label}</button>;
       })}
     </div>
   );
@@ -331,16 +371,50 @@ function SelectField({ label }: { label: string }) {
   );
 }
 
-function Pagination({ total = 20 }: { total?: number }) {
+function getPaginationItems(totalPages: number, currentPage: number) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+  const items: Array<number | "ellipsis"> = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+  if (start > 2) items.push("ellipsis");
+  for (let page = start; page <= end; page += 1) items.push(page);
+  if (end < totalPages - 1) items.push("ellipsis");
+  items.push(totalPages);
+  return items;
+}
+
+function Pagination({
+  total,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  total: number;
+  currentPage: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const pageItems = getPaginationItems(totalPages, currentPage);
   return (
-    <div className="pagination">
+    <nav className="pagination" aria-label="分页">
       <span>共 {total} 条</span>
-      <button aria-label="上一页"><ChevronLeft size={16} /></button>
-      <button className="active">1</button>
-      <button>2</button>
-      <button aria-label="下一页"><ChevronRight size={16} /></button>
-      <SelectField label="10 条/页" />
-    </div>
+      <button aria-label="上一页" disabled={currentPage === 1} onClick={() => onPageChange(currentPage - 1)}><ChevronLeft size={16} /></button>
+      {pageItems.map((item, index) => (
+        item === "ellipsis"
+          ? <span className="pagination-ellipsis" key={`ellipsis-${index}`}>…</span>
+          : <button className={item === currentPage ? "active" : ""} aria-current={item === currentPage ? "page" : undefined} key={item} onClick={() => onPageChange(item)}>{item}</button>
+      ))}
+      <button aria-label="下一页" disabled={currentPage === totalPages} onClick={() => onPageChange(currentPage + 1)}><ChevronRight size={16} /></button>
+      <label className="pagination-size">
+        <select aria-label="每页条数" value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
+          {[10, 20, 50].map((size) => <option key={size} value={size}>{size} 条/页</option>)}
+        </select>
+        <ChevronDown aria-hidden="true" size={16} />
+      </label>
+    </nav>
   );
 }
 
@@ -353,6 +427,43 @@ function CardHeader({ title, subtitle, action }: { title: string; subtitle?: str
   );
 }
 
+function getTableText(value: ReactNode) {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  return null;
+}
+
+function getColumnWidth<T extends Record<string, ReactNode>>(column: string, rows: T[]) {
+  const longestValue = rows.reduce((longest, row) => {
+    const value = getTableText(row[column]);
+    return Math.max(longest, value ? Array.from(value).length : 0);
+  }, Array.from(column).length);
+  return Math.max(96, Math.min(longestValue, 16) * 14 + 32);
+}
+
+function TableCellContent({
+  value,
+  onShowTooltip,
+  onHideTooltip,
+}: {
+  value: ReactNode;
+  onShowTooltip: (content: string, target: HTMLElement) => void;
+  onHideTooltip: () => void;
+}) {
+  const text = getTableText(value);
+  const shouldTruncate = Boolean(text && Array.from(text).length > 16);
+  if (!shouldTruncate || !text) return <>{value}</>;
+  return (
+    <span
+      className="table-cell-text is-truncated"
+      title={text}
+      onMouseEnter={(event) => onShowTooltip(text, event.currentTarget)}
+      onMouseLeave={onHideTooltip}
+    >
+      {text}
+    </span>
+  );
+}
+
 function DataTable<T extends Record<string, ReactNode>>({
   columns,
   rows,
@@ -362,22 +473,112 @@ function DataTable<T extends Record<string, ReactNode>>({
   rows: T[];
   actions?: (row: T) => ReactNode;
 }) {
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(() => new Set());
+  const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
+  const [tooltip, setTooltip] = useState<{ content: string; left: number; top: number } | null>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const activePage = Math.min(currentPage, totalPages);
+  const pageStart = (activePage - 1) * pageSize;
+  const pageRows = rows.slice(pageStart, pageStart + pageSize);
+  const visibleRowIndexes = pageRows.map((_, index) => pageStart + index);
+  const allVisibleRowsSelected = visibleRowIndexes.length > 0 && visibleRowIndexes.every((index) => selectedRows.has(index));
+  const columnWidths = columns.map((column) => getColumnWidth(column, rows));
+  const tableMinWidth = 52 + columnWidths.reduce((total, width) => total + width, 0) + (actions ? 240 : 0);
+
+  useEffect(() => {
+    const tableWrap = tableWrapRef.current;
+    if (!tableWrap) return undefined;
+    const updateOverflowState = () => setHasHorizontalOverflow(tableWrap.scrollWidth > tableWrap.clientWidth + 1);
+    updateOverflowState();
+    const observer = new ResizeObserver(updateOverflowState);
+    observer.observe(tableWrap);
+    window.addEventListener("resize", updateOverflowState);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateOverflowState);
+    };
+  }, [actions, columns.length, pageSize, rows.length, tableMinWidth]);
+
+  const toggleVisibleRows = () => {
+    setSelectedRows((current) => {
+      const next = new Set(current);
+      if (allVisibleRowsSelected) visibleRowIndexes.forEach((index) => next.delete(index));
+      else visibleRowIndexes.forEach((index) => next.add(index));
+      return next;
+    });
+  };
+
+  const toggleRow = (rowIndex: number) => {
+    setSelectedRows((current) => {
+      const next = new Set(current);
+      if (next.has(rowIndex)) next.delete(rowIndex);
+      else next.add(rowIndex);
+      return next;
+    });
+  };
+
+  const showTooltip = (content: string, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - 368);
+    setTooltip({ content, left: Math.min(Math.max(8, rect.left), maxLeft), top: rect.bottom + 8 });
+  };
+
   return (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>{columns.map((column) => <th key={column}>{column}</th>)}{actions && <th>操作</th>}</tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={index}>
-              {columns.map((column) => <td key={column}>{row[column]}</td>)}
-              {actions && <td>{actions(row)}</td>}
+    <>
+      <div className={`table-wrap ${hasHorizontalOverflow ? "is-scrollable" : ""}`} ref={tableWrapRef}>
+        <table style={{ minWidth: `${tableMinWidth}px` }}>
+          <colgroup>
+            <col className="table-select-column" />
+            {columnWidths.map((width, index) => <col key={columns[index]} style={{ width }} />)}
+            {actions && <col className="table-action-column" />}
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="table-select-cell table-sticky-left">
+                <input type="checkbox" aria-label="选择当前页全部数据" checked={allVisibleRowsSelected} onChange={toggleVisibleRows} />
+              </th>
+              {columns.map((column) => <th key={column}>{column}</th>)}
+              {actions && <th className="table-action-cell table-sticky-right">操作</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {pageRows.map((row, pageIndex) => {
+              const rowIndex = pageStart + pageIndex;
+              return (
+                <tr key={rowIndex}>
+                  <td className="table-select-cell table-sticky-left">
+                    <input type="checkbox" aria-label={`选择第 ${rowIndex + 1} 条数据`} checked={selectedRows.has(rowIndex)} onChange={() => toggleRow(rowIndex)} />
+                  </td>
+                  {columns.map((column) => (
+                    <td key={column}>
+                      <TableCellContent value={row[column]} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} />
+                    </td>
+                  ))}
+                  {actions && <td className="table-action-cell table-sticky-right">{actions(row)}</td>}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Pagination
+        total={rows.length}
+        currentPage={activePage}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setCurrentPage(1);
+        }}
+      />
+      {tooltip && createPortal(
+        <div className="table-cell-tooltip" role="tooltip" style={{ left: tooltip.left, top: tooltip.top }}>{tooltip.content}</div>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -404,7 +605,6 @@ function ReportManagement({ openModal }: { openModal: (type: ModalType, payload?
           ]} />
         )}
       />
-      <Pagination total={reportRows.length} />
     </section>
   );
 }
@@ -623,7 +823,6 @@ function UserManagement({ openModal }: { openModal: (type: ModalType, payload?: 
         </div>
       </div>
       <DataTable columns={["用户ID", "用户姓名", "所属组织名称", "手机号", "邮箱", "创建时间", "账号状态"]} rows={userRows.map((row) => ({ ...row, 原始账号状态: row.账号状态, 账号状态: <StatusTag value={row.账号状态} /> }))} actions={(row) => <ActionLinks actions={[row.原始账号状态 === "启用" ? "禁用" : "启用", "查看详情"]} />} />
-      <Pagination total={userRows.length} />
     </section>
   );
 }
