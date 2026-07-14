@@ -1,8 +1,11 @@
 import {
   Activity,
+  ArrowDown,
+  ArrowUp,
   BarChart3,
   Bell,
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -11,9 +14,11 @@ import {
   ClipboardCheck,
   Copy,
   Database,
+  Eye,
   FileBarChart,
   FileText,
   FolderOpen,
+  GripVertical,
   KeyRound,
   LayoutGrid,
   LockKeyhole,
@@ -22,9 +27,11 @@ import {
   MessageSquareMore,
   MoreHorizontal,
   Network,
+  Pin,
   Plus,
+  Printer,
+  Save,
   Search,
-  Settings,
   ShieldCheck,
   Trash2,
   Upload,
@@ -33,7 +40,7 @@ import {
   XCircle,
   type LucideIcon,
 } from "lucide-react";
-import { cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type PageKey =
@@ -69,6 +76,15 @@ type ModalOptions = {
   onSave?: ModalSave;
 };
 type OpenModal = (type: ModalType, options?: ModalOptions) => void;
+
+type FeedbackNotice = {
+  id: number;
+  message: string;
+  tone: FeedbackTone;
+};
+
+type FeedbackTone = "info" | "success" | "warning" | "error";
+type Notify = (message: string, tone?: FeedbackTone) => void;
 
 type NavChild = { key: PageKey; label: string };
 
@@ -139,6 +155,16 @@ const pageLabels: Record<PageKey, string> = {
   "permission-config": "权限配置",
 };
 
+const breadcrumbParents: Partial<Record<PageKey, string>> = {
+  "workflow-center": "审核管理",
+  "form-center": "审核管理",
+  "audit-content": "审核管理",
+  "event-info": "埋点管理",
+  "event-dashboard": "埋点管理",
+  "resource-management": "权限管理",
+  "permission-config": "权限管理",
+};
+
 const reportTypeOptions = ["TR报告", "战略咨询报告", "洞察分析报告", "未来产业报告"];
 const statusOptions = ["启用", "禁用"];
 const roleOptions = ["普通用户", "机构用户", "政府用户"];
@@ -152,9 +178,9 @@ const reportRows = [
 ];
 
 const initialWorkflowRows = [
-  { id: "workflow-report", 名称: "报告审核流程", 发布时间: "2026-07-08", 发布状态: "发布" },
-  { id: "workflow-scholar", 名称: "认证学者审核流程", 发布时间: "2026-07-05", 发布状态: "下架" },
-  { id: "workflow-comment", 名称: "评论审核流程", 发布时间: "2026-07-01", 发布状态: "发布" },
+  { id: "workflow-report", 流程ID: "FLOW-202607-001", 流程名称: "报告审核流程", 发布时间: "2026-07-08", 发布状态: "已发布" },
+  { id: "workflow-scholar", 流程ID: "FLOW-202607-002", 流程名称: "认证学者审核流程", 发布时间: "2026-07-05", 发布状态: "未发布" },
+  { id: "workflow-comment", 流程ID: "FLOW-202607-003", 流程名称: "评论审核流程", 发布时间: "2026-07-01", 发布状态: "已发布" },
 ];
 
 const commentRows = [
@@ -173,42 +199,74 @@ const auditReportRows = [
 ];
 
 const trackingRows = [
-  { 事件ID: "EVT_REPORT_VIEW", 所属功能模块: "报告管理", 埋点标签: "报告查看", 埋点路径: "/report/detail", 触发机制: "点击" },
-  { 事件ID: "EVT_USER_REGISTER", 所属功能模块: "用户管理", 埋点标签: "用户注册", 埋点路径: "/user/register", 触发机制: "提交" },
-  { 事件ID: "EVT_ROLE_CONFIG", 所属功能模块: "权限配置", 埋点标签: "权限配置", 埋点路径: "/permission/config", 触发机制: "保存" },
+  { 事件ID: "EVT_REPORT_VIEW", 所属功能模块: "报告管理", 埋点标签: "报告查看", 埋点路径: "/report/detail", 触发机制: "点击", 创建时间: "2026-07-08 10:20" },
+  { 事件ID: "EVT_USER_REGISTER", 所属功能模块: "用户管理", 埋点标签: "用户注册", 埋点路径: "/user/register", 触发机制: "提交", 创建时间: "2026-07-06 14:35" },
+  { 事件ID: "EVT_ROLE_CONFIG", 所属功能模块: "权限配置", 埋点标签: "权限配置", 埋点路径: "/permission/config", 触发机制: "保存", 创建时间: "2026-07-03 09:18" },
+  { 事件ID: "EVT_FORM_PRINT", 所属功能模块: "审核管理", 埋点标签: "表单打印", 埋点路径: "/audit/form/print", 触发机制: "点击", 创建时间: "2026-07-02 16:42" },
 ];
 
 type TimeInterval = "年" | "月" | "日";
 
 type DashboardData = {
-  eventTotal: string;
-  activeUsers: string;
-  conversionRate: string;
-  trend: Array<{ label: string; value: number }>;
-  ranking: Array<{ label: string; value: number }>;
+  stats: {
+    eventTotal: { value: string; trend: string; direction: "up" | "down" };
+    activeUsers: { value: string; trend: string; direction: "up" | "down" };
+    clickRate: { value: string; trend: string; direction: "up" | "down" };
+    pathConversion: { value: string; trend: string; direction: "up" | "down" };
+  };
+  trend: Array<{ label: string; eventValue: number; userValue: number }>;
+  funnel: Array<{ label: string; value: string; rate: number }>;
+  ranking: Array<{ 事件ID: string; 埋点标签: string; 触发次数: string; 页面停留均时: string }>;
 };
 
 const eventDashboardData: Record<TimeInterval, DashboardData> = {
   年: {
-    eventTotal: "24,860",
-    activeUsers: "6,420",
-    conversionRate: "32.8%",
-    trend: [{ label: "1月", value: 1820 }, { label: "3月", value: 2360 }, { label: "5月", value: 3180 }, { label: "7月", value: 4020 }, { label: "9月", value: 4770 }, { label: "11月", value: 5360 }],
-    ranking: [{ label: "报告查看", value: 6840 }, { label: "用户注册", value: 4260 }, { label: "权限配置", value: 3180 }],
+    stats: {
+      eventTotal: { value: "248,600", trend: "+18.6% 较上年", direction: "up" },
+      activeUsers: { value: "64,200", trend: "DAU/MAU 21.4%", direction: "up" },
+      clickRate: { value: "46.8%", trend: "+6.2% 环比", direction: "up" },
+      pathConversion: { value: "32.8%", trend: "+3.6% 较上年", direction: "up" },
+    },
+    trend: [{ label: "1月", eventValue: 18200, userValue: 4860 }, { label: "3月", eventValue: 23600, userValue: 6280 }, { label: "5月", eventValue: 31800, userValue: 5720 }, { label: "7月", eventValue: 40200, userValue: 7640 }, { label: "9月", eventValue: 47700, userValue: 6980 }, { label: "11月", eventValue: 53600, userValue: 8420 }],
+    funnel: [{ label: "页面访问", value: "186,420", rate: 100 }, { label: "关键按钮点击", value: "87,256", rate: 68 }, { label: "业务提交", value: "52,938", rate: 48 }, { label: "完成转化", value: "32,846", rate: 32.8 }],
+    ranking: [
+      { 事件ID: "EVT_REPORT_VIEW", 埋点标签: "报告查看", 触发次数: "68,420", 页面停留均时: "3分18秒" },
+      { 事件ID: "EVT_USER_REGISTER", 埋点标签: "用户注册", 触发次数: "42,600", 页面停留均时: "2分46秒" },
+      { 事件ID: "EVT_ROLE_CONFIG", 埋点标签: "权限配置", 触发次数: "31,800", 页面停留均时: "4分12秒" },
+      { 事件ID: "EVT_FORM_PRINT", 埋点标签: "表单打印", 触发次数: "18,620", 页面停留均时: "1分28秒" },
+    ],
   },
   月: {
-    eventTotal: "8,460",
-    activeUsers: "2,180",
-    conversionRate: "30.6%",
-    trend: [{ label: "第1周", value: 1260 }, { label: "第2周", value: 1420 }, { label: "第3周", value: 1780 }, { label: "第4周", value: 2050 }],
-    ranking: [{ label: "报告查看", value: 2280 }, { label: "用户注册", value: 1460 }, { label: "权限配置", value: 980 }],
+    stats: {
+      eventTotal: { value: "28,460", trend: "+12.4% 较上月", direction: "up" },
+      activeUsers: { value: "8,180", trend: "DAU/MAU 19.8%", direction: "up" },
+      clickRate: { value: "43.6%", trend: "+2.8% 环比", direction: "up" },
+      pathConversion: { value: "30.6%", trend: "-1.2% 较上月", direction: "down" },
+    },
+    trend: [{ label: "第1周", eventValue: 6260, userValue: 1800 }, { label: "第2周", eventValue: 7420, userValue: 1520 }, { label: "第3周", eventValue: 6780, userValue: 2140 }, { label: "第4周", eventValue: 8050, userValue: 1960 }],
+    funnel: [{ label: "页面访问", value: "21,680", rate: 100 }, { label: "关键按钮点击", value: "9,452", rate: 70 }, { label: "业务提交", value: "5,816", rate: 50 }, { label: "完成转化", value: "3,548", rate: 30.6 }],
+    ranking: [
+      { 事件ID: "EVT_REPORT_VIEW", 埋点标签: "报告查看", 触发次数: "8,280", 页面停留均时: "3分06秒" },
+      { 事件ID: "EVT_USER_REGISTER", 埋点标签: "用户注册", 触发次数: "5,460", 页面停留均时: "2分32秒" },
+      { 事件ID: "EVT_ROLE_CONFIG", 埋点标签: "权限配置", 触发次数: "3,980", 页面停留均时: "4分08秒" },
+      { 事件ID: "EVT_FORM_PRINT", 埋点标签: "表单打印", 触发次数: "2,120", 页面停留均时: "1分22秒" },
+    ],
   },
   日: {
-    eventTotal: "1,286",
-    activeUsers: "438",
-    conversionRate: "28.4%",
-    trend: [{ label: "09:00", value: 126 }, { label: "11:00", value: 214 }, { label: "13:00", value: 168 }, { label: "15:00", value: 246 }, { label: "17:00", value: 312 }, { label: "19:00", value: 220 }],
-    ranking: [{ label: "报告查看", value: 362 }, { label: "用户注册", value: 216 }, { label: "权限配置", value: 148 }],
+    stats: {
+      eventTotal: { value: "1,286", trend: "+8.6% 较昨日", direction: "up" },
+      activeUsers: { value: "438", trend: "DAU/MAU 18.6%", direction: "up" },
+      clickRate: { value: "41.8%", trend: "+1.6% 环比", direction: "up" },
+      pathConversion: { value: "28.4%", trend: "-0.8% 较昨日", direction: "down" },
+    },
+    trend: [{ label: "09:00", eventValue: 126, userValue: 52 }, { label: "11:00", eventValue: 214, userValue: 88 }, { label: "13:00", eventValue: 168, userValue: 60 }, { label: "15:00", eventValue: 246, userValue: 110 }, { label: "17:00", eventValue: 312, userValue: 84 }, { label: "19:00", eventValue: 220, userValue: 96 }],
+    funnel: [{ label: "页面访问", value: "986", rate: 100 }, { label: "关键按钮点击", value: "412", rate: 72 }, { label: "业务提交", value: "268", rate: 50 }, { label: "完成转化", value: "186", rate: 28.4 }],
+    ranking: [
+      { 事件ID: "EVT_REPORT_VIEW", 埋点标签: "报告查看", 触发次数: "362", 页面停留均时: "3分12秒" },
+      { 事件ID: "EVT_USER_REGISTER", 埋点标签: "用户注册", 触发次数: "216", 页面停留均时: "2分28秒" },
+      { 事件ID: "EVT_ROLE_CONFIG", 埋点标签: "权限配置", 触发次数: "148", 页面停留均时: "4分16秒" },
+      { 事件ID: "EVT_FORM_PRINT", 埋点标签: "表单打印", 触发次数: "96", 页面停留均时: "1分18秒" },
+    ],
   },
 };
 
@@ -236,14 +294,133 @@ const pageRows = [
 ];
 
 const apiLogRows = [
-  { 调用时间: "2026-07-08 10:00", 调用方IP: "10.0.0.1", 接口地址: "/api/report", 请求参数: "报告类型", 响应结果: "成功", 调用耗时: "120ms", 错误信息: "-" },
-  { 调用时间: "2026-07-08 11:00", 调用方IP: "10.0.0.2", 接口地址: "/api/user", 请求参数: "用户ID", 响应结果: "失败", 调用耗时: "320ms", 错误信息: "错误码说明" },
+  { 调用时间: "2026-07-13 14:38:22", 调用方IP: "10.0.0.18", 接口名称: "查询人才库学者", 接口地址: "/api/v1/talents/scholars", 请求参数: "{\"talentPoolId\":\"TP-AI-001\",\"page\":1}", 响应结果: "成功", 调用耗时: "86ms", 错误信息: "-", 时间范围: "近1小时" },
+  { 调用时间: "2026-07-13 14:21:08", 调用方IP: "10.0.0.32", 接口名称: "获取报告详情", 接口地址: "/api/v1/reports/TR001", 请求参数: "{\"includeSummary\":true}", 响应结果: "成功", 调用耗时: "112ms", 错误信息: "-", 时间范围: "近1小时" },
+  { 调用时间: "2026-07-12 09:16:45", 调用方IP: "10.0.0.46", 接口名称: "查询智库列表", 接口地址: "/api/v1/think-tanks", 请求参数: "{\"keyword\":\"未来产业\"}", 响应结果: "失败", 调用耗时: "328ms", 错误信息: "请求参数 keyword 长度超出限制", 时间范围: "近7天" },
+  { 调用时间: "2026-07-10 16:05:11", 调用方IP: "10.0.0.21", 接口名称: "查询人才库学者", 接口地址: "/api/v1/talents/scholars", 请求参数: "{\"talentPoolId\":\"TP-MAT-002\",\"page\":2}", 响应结果: "成功", 调用耗时: "94ms", 错误信息: "-", 时间范围: "近7天" },
 ];
 
-const talentRows = [
-  { 人才库名称: "人工智能人才库", 描述: "人才库资源", 学者数量: "128", 创建人: "系统管理员" },
-  { 人才库名称: "新材料人才库", 描述: "人才库资源", 学者数量: "96", 创建人: "系统管理员" },
+const initialTokenRows = [
+  { id: "token-portal", 应用名称: "国科信门户", Token字符串: "eyJhbGciOiJIUzI1NiJ9.portal.gkx.2026", 创建时间: "2026-07-01 09:30", 到期时间: "2027-07-01 09:30", 状态: "正常" },
+  { id: "token-report", 应用名称: "报告服务", Token字符串: "eyJhbGciOiJIUzI1NiJ9.report.gkx.2026", 创建时间: "2026-06-18 14:20", 到期时间: "2026-12-18 14:20", 状态: "正常" },
+  { id: "token-talent", 应用名称: "人才库同步服务", Token字符串: "eyJhbGciOiJIUzI1NiJ9.talent.gkx.2026", 创建时间: "2026-05-09 11:08", 到期时间: "2026-11-09 11:08", 状态: "已注销" },
 ];
+
+type ApiDocument = {
+  id: string;
+  name: string;
+  method: "GET" | "POST";
+  path: string;
+  description: string;
+  parameters: Array<{ 参数名: string; 类型: string; 必填: string; 说明: string }>;
+  response: string;
+  errors: Array<{ 错误码: string; 说明: string }>;
+};
+
+const apiDocumentCatalog: Record<string, ApiDocument[]> = {
+  人才库: [{
+    id: "talent-list",
+    name: "查询人才库学者",
+    method: "GET",
+    path: "/api/v1/talents/scholars",
+    description: "按人才库查询已关联的学者数据。",
+    parameters: [
+      { 参数名: "talentPoolId", 类型: "string", 必填: "是", 说明: "人才库ID" },
+      { 参数名: "page", 类型: "number", 必填: "否", 说明: "页码，默认 1" },
+      { 参数名: "pageSize", 类型: "number", 必填: "否", 说明: "每页数量，默认 20" },
+    ],
+    response: `{
+  "code": 0,
+  "data": {
+    "total": 128,
+    "items": [{ "scholarId": "S10021", "name": "张明远" }]
+  }
+}`,
+    errors: [{ 错误码: "40001", 说明: "人才库ID不能为空" }, { 错误码: "40401", 说明: "人才库不存在" }],
+  }],
+  报告: [{
+    id: "report-detail",
+    name: "获取报告详情",
+    method: "GET",
+    path: "/api/v1/reports/{reportId}",
+    description: "根据报告ID获取报告基本信息及内容摘要。",
+    parameters: [
+      { 参数名: "reportId", 类型: "string", 必填: "是", 说明: "报告ID，路径参数" },
+      { 参数名: "includeSummary", 类型: "boolean", 必填: "否", 说明: "是否返回内容摘要" },
+    ],
+    response: `{
+  "code": 0,
+  "data": {
+    "reportId": "TR001",
+    "reportName": "TR报告：人工智能",
+    "reportType": "TR报告"
+  }
+}`,
+    errors: [{ 错误码: "40402", 说明: "报告不存在" }, { 错误码: "40301", 说明: "无报告资源访问权限" }],
+  }],
+  智库: [{
+    id: "think-tank-list",
+    name: "查询智库列表",
+    method: "POST",
+    path: "/api/v1/think-tanks/search",
+    description: "按关键词和研究领域检索智库资源。",
+    parameters: [
+      { 参数名: "keyword", 类型: "string", 必填: "否", 说明: "智库名称关键词" },
+      { 参数名: "field", 类型: "string", 必填: "否", 说明: "研究领域" },
+    ],
+    response: `{
+  "code": 0,
+  "data": [{ "thinkTankId": "TT001", "name": "未来产业智库" }]
+}`,
+    errors: [{ 错误码: "40002", 说明: "检索条件格式错误" }, { 错误码: "50001", 说明: "智库服务暂不可用" }],
+  }],
+};
+
+type BusinessResourceType = "talent" | "report" | "thinktank";
+
+const businessResourceConfigs = {
+  talent: {
+    tab: "人才库资源",
+    directoryTitle: "人才库目录",
+    directories: ["人工智能人才库", "新材料人才库", "生命科学人才库"],
+    info: { 名称: "人工智能人才库", 描述: "聚合人工智能领域重点学者资源", 总数标签: "学者总数", 总数: "128", 创建人: "系统管理员" },
+    columns: ["学者名称", "所属学科", "职称", "关联时间"],
+    rows: [
+      { 学者名称: "张明远", 所属学科: "计算机科学", 职称: "研究员", 关联时间: "2026-07-08 10:20" },
+      { 学者名称: "陈思敏", 所属学科: "人工智能", 职称: "教授", 关联时间: "2026-07-06 14:35" },
+      { 学者名称: "李博文", 所属学科: "自动化", 职称: "副研究员", 关联时间: "2026-07-03 09:18" },
+    ],
+  },
+  report: {
+    tab: "报告资源",
+    directoryTitle: "报告资源目录",
+    directories: ["TR报告", "战略咨询报告", "洞察分析报告", "未来产业报告"],
+    info: { 名称: "TR报告", 描述: "技术研究类报告资源集合", 总数标签: "报告总数", 总数: "46", 创建人: "系统管理员" },
+    columns: ["报告名称", "报告类型ID", "所属学科", "领域", "关联时间"],
+    rows: [
+      { 报告名称: "TR报告：人工智能", 报告类型ID: "TR001", 所属学科: "计算机科学", 领域: "人工智能", 关联时间: "2026-07-08 10:20" },
+      { 报告名称: "TR报告：量子计算", 报告类型ID: "TR002", 所属学科: "物理学", 领域: "量子科技", 关联时间: "2026-07-05 16:42" },
+    ],
+  },
+  thinktank: {
+    tab: "智库资源",
+    directoryTitle: "智库资源目录",
+    directories: ["科技政策智库", "未来产业智库", "区域创新智库"],
+    info: { 名称: "科技政策智库", 描述: "科技政策研究与决策咨询资源集合", 总数标签: "智库总数", 总数: "18", 创建人: "系统管理员" },
+    columns: ["智库名称", "所属领域", "创建人", "关联时间"],
+    rows: [
+      { 智库名称: "国家科技战略研究中心", 所属领域: "科技政策", 创建人: "系统管理员", 关联时间: "2026-07-02 11:18" },
+      { 智库名称: "未来产业研究院", 所属领域: "未来产业", 创建人: "系统管理员", 关联时间: "2026-06-28 09:46" },
+    ],
+  },
+} satisfies Record<BusinessResourceType, {
+  tab: string;
+  directoryTitle: string;
+  directories: string[];
+  info: { 名称: string; 描述: string; 总数标签: string; 总数: string; 创建人: string };
+  columns: string[];
+  rows: Array<Record<string, string>>;
+}>;
 
 const reportResourceRows = [
   { 报告类型: "TR报告", 报告名称: "TR报告：人工智能", 报告类型ID: "TR001", 所属学科: "计算机科学", 领域: "人工智能" },
@@ -252,14 +429,61 @@ const reportResourceRows = [
 
 function StatusTag({ value }: { value: string }) {
   const tone =
-    value.includes("通过") || value === "上架" || value === "启用" || value === "发布" || value === "成功"
+    value.includes("通过") || value === "上架" || value === "启用" || value === "发布" || value === "已发布" || value === "成功" || value === "正常"
       ? "success"
-      : value.includes("失败") || value === "下架" || value === "禁用" || value === "废弃"
+      : value.includes("失败") || value === "下架" || value === "禁用" || value === "废弃" || value === "已注销"
         ? "danger"
         : value.includes("待")
           ? "warning"
           : "info";
   return <span className={`status-tag ${tone}`}><i />{value}</span>;
+}
+
+function PinState({ pinned }: { pinned: boolean }) {
+  return (
+    <span className={`pin-state ${pinned ? "is-pinned" : ""}`}>
+      {pinned && <Pin size={13} aria-hidden="true" />}
+      {pinned ? "是" : "否"}
+    </span>
+  );
+}
+
+function FeedbackToasts({ notices, onDismiss }: { notices: FeedbackNotice[]; onDismiss: (id: number) => void }) {
+  if (notices.length === 0) return null;
+  return createPortal(
+    <div className="feedback-viewport" aria-live="polite" aria-atomic="true">
+      {notices.map((notice) => (
+        <div className={`feedback-toast ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"} key={notice.id}>
+          <span className="feedback-icon" aria-hidden="true">
+            {notice.tone === "success" && <Check size={14} strokeWidth={3} />}
+            {notice.tone === "error" && <X size={14} strokeWidth={3} />}
+            {notice.tone === "info" && <b>i</b>}
+            {notice.tone === "warning" && <b>!</b>}
+          </span>
+          <span className="feedback-message">{notice.message}</span>
+          <button type="button" aria-label="关闭提示" onClick={() => onDismiss(notice.id)}><X size={15} /></button>
+        </div>
+      ))}
+    </div>,
+    document.body,
+  );
+}
+
+function ModalAlert({ tone = "info", title, children }: { tone?: FeedbackTone; title?: string; children: ReactNode }) {
+  return (
+    <div className={`modal-alert ${tone}`} role={tone === "error" || tone === "warning" ? "alert" : "status"}>
+      <span className="modal-alert-icon" aria-hidden="true">
+        {tone === "success" && <Check size={13} strokeWidth={3} />}
+        {tone === "error" && <X size={13} strokeWidth={3} />}
+        {tone === "info" && <b>i</b>}
+        {tone === "warning" && <b>!</b>}
+      </span>
+      <div className="modal-alert-content">
+        {title && <strong>{title}</strong>}
+        <p>{children}</p>
+      </div>
+    </div>
+  );
 }
 
 function Button({
@@ -268,15 +492,17 @@ function Button({
   icon: Icon,
   onClick,
   type = "button",
+  disabled = false,
 }: {
   children: ReactNode;
   variant?: "primary" | "default" | "text" | "danger";
   icon?: LucideIcon;
   onClick?: () => void;
   type?: "button" | "submit";
+  disabled?: boolean;
 }) {
   return (
-    <button type={type} className={`btn ${variant}`} onClick={onClick}>
+    <button type={type} className={`btn ${variant}`} disabled={disabled} onClick={onClick}>
       {Icon && <Icon size={16} strokeWidth={1.9} />}
       {children}
     </button>
@@ -311,7 +537,13 @@ const actionPriorities: Record<string, number> = {
   "通过": 8,
   "取消展示": 8,
   "驳回": 8,
+  "注销": 90,
   "删除": 99,
+};
+
+const actionTips: Record<string, string> = {
+  置顶: "置顶后，该报告将在列表顶部优先展示",
+  取消置顶: "取消置顶后，该报告将恢复默认排序",
 };
 
 type ActionSource = Array<string | false | null | undefined>;
@@ -322,46 +554,69 @@ type TableAction = {
   index: number;
   priority: number;
   isDanger: boolean;
+  isDisabled: boolean;
 };
 
-function getOrderedActions(actions: ActionSource): TableAction[] {
+function getOrderedActions(actions: ActionSource, disabledActions: string[] = []): TableAction[] {
   return actions
     .filter(Boolean)
     .map((action, index) => {
       const originalLabel = action as string;
       const label = compactActionLabels[originalLabel] ?? originalLabel;
-      const isDanger = label.includes("删除") || label.includes("驳回") || label.includes("失败") || label.includes("禁用") || label.includes("取消展示");
-      return { originalLabel, label, index, priority: actionPriorities[label] ?? 50, isDanger };
+      const isDanger = label.includes("删除") || label.includes("注销") || label.includes("驳回") || label.includes("失败") || label.includes("禁用") || label.includes("取消展示");
+      return { originalLabel, label, index, priority: actionPriorities[label] ?? 50, isDanger, isDisabled: disabledActions.includes(originalLabel) };
     })
     .sort((a, b) => a.priority - b.priority || a.index - b.index);
 }
 
-function ActionLinks({ actions, onAction }: { actions: ActionSource; onAction?: (action: string) => void }) {
-  const orderedActions = getOrderedActions(actions);
+function ActionLinks({ actions, disabledActions = [], actionTipOverrides = {}, onAction }: { actions: ActionSource; disabledActions?: string[]; actionTipOverrides?: Record<string, string>; onAction?: (action: string) => void }) {
+  const orderedActions = getOrderedActions(actions, disabledActions);
+  const [actionTooltip, setActionTooltip] = useState<{ content: string; left: number; top: number } | null>(null);
   return (
-    <div className="inline-actions">
-      {orderedActions.map(({ originalLabel, label, isDanger }) => {
-        return (
-          <button
-            aria-label={originalLabel}
-            className={isDanger ? "danger-action" : ""}
-            key={originalLabel}
-            onClick={(event) => {
-              event.stopPropagation();
-              onAction?.(originalLabel);
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
+    <>
+      <div className="inline-actions">
+        {orderedActions.map(({ originalLabel, label, isDanger, isDisabled }) => {
+          const tip = actionTipOverrides[originalLabel] ?? (isDisabled && originalLabel === "报告删除" ? "已置顶的报告不能删除，请先取消置顶" : actionTips[originalLabel]);
+          return (
+            <button
+              aria-label={originalLabel}
+              aria-disabled={isDisabled || undefined}
+              className={`${isDanger ? "danger-action" : ""} ${tip ? "has-action-tip" : ""} ${isDisabled ? "disabled-action" : ""}`.trim()}
+              key={originalLabel}
+              title={tip}
+              onMouseEnter={tip ? (event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setActionTooltip({ content: tip, left: Math.max(8, Math.min(rect.left + rect.width / 2, window.innerWidth - 8)), top: rect.top - 8 });
+              } : undefined}
+              onMouseLeave={tip ? () => setActionTooltip(null) : undefined}
+              onFocus={tip ? (event) => {
+                const rect = event.currentTarget.getBoundingClientRect();
+                setActionTooltip({ content: tip, left: Math.max(8, Math.min(rect.left + rect.width / 2, window.innerWidth - 8)), top: rect.top - 8 });
+              } : undefined}
+              onBlur={tip ? () => setActionTooltip(null) : undefined}
+              onClick={(event) => {
+                event.stopPropagation();
+                setActionTooltip(null);
+                if (isDisabled) return;
+                onAction?.(originalLabel);
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      {actionTooltip && createPortal(
+        <div className="action-tooltip" role="tooltip" style={{ left: actionTooltip.left, top: actionTooltip.top }}>{actionTooltip.content}</div>,
+        document.body,
+      )}
+    </>
   );
 }
 
 function getActionItems(actionNode: ReactNode): TableAction[] {
-  if (isValidElement<{ actions: ActionSource }>(actionNode) && actionNode.type === ActionLinks) {
-    return getOrderedActions(actionNode.props.actions);
+  if (isValidElement<{ actions: ActionSource; disabledActions?: string[] }>(actionNode) && actionNode.type === ActionLinks) {
+    return getOrderedActions(actionNode.props.actions, actionNode.props.disabledActions);
   }
   return [];
 }
@@ -377,21 +632,25 @@ function FilterInput({
   label,
   placeholder = label,
   searchable = false,
+  value,
+  onChange,
 }: {
   label: string;
   placeholder?: string;
   searchable?: boolean;
+  value?: string;
+  onChange?: (value: string) => void;
 }) {
   return (
     <label className="filter-field">
       <span className="filter-label">{label}</span>
       {searchable ? (
         <span className="filter-search-control">
-          <input aria-label={label} placeholder={placeholder} />
+          <input aria-label={label} placeholder={placeholder} value={value} onChange={(event) => onChange?.(event.target.value)} />
           <Search aria-hidden="true" size={16} />
         </span>
       ) : (
-        <input className="filter-control" aria-label={label} placeholder={placeholder} />
+        <input className="filter-control" aria-label={label} placeholder={placeholder} value={value} onChange={(event) => onChange?.(event.target.value)} />
       )}
     </label>
   );
@@ -532,6 +791,8 @@ function getTableText(value: ReactNode) {
 type TableColumnWidthKind = "long" | "name" | "date" | "identifier" | "contact" | "numeric" | "compact" | "default";
 
 const tableColumnMinimumWidths: Record<string, number> = {
+  流程ID: 200,
+  流程名称: 240,
   报告标题: 200,
   报告类型: 128,
   报告来源: 160,
@@ -588,12 +849,19 @@ const tableColumnMinimumWidths: Record<string, number> = {
   请求参数: 200,
   调用耗时: 96,
   错误信息: 200,
+  应用名称: 180,
+  Token字符串: 220,
+  到期时间: 144,
   人才库名称: 220,
   描述: 240,
   学者数量: 96,
+  学者名称: 160,
+  所属学科: 160,
+  关联时间: 144,
+  当前角色: 220,
+  智库名称: 220,
   报告名称: 220,
   报告类型ID: 120,
-  所属学科: 160,
   领域: 120,
 };
 
@@ -619,33 +887,35 @@ function getTableColumnWidthKind(column: string): TableColumnWidthKind {
   return "default";
 }
 
-function getTextDisplayWidth(text: string) {
+function getTextDisplayWidth(text: string, maximumUnits = 16) {
   const units = Array.from(text).reduce((total, character) => (
     total + (/^[\u2E80-\u9FFF\uF900-\uFAFF]$/.test(character) ? 1 : character === " " ? .35 : .58)
   ), 0);
-  return Math.ceil(Math.min(units, 16) * 14 + 32);
+  return Math.ceil(Math.min(units, maximumUnits) * 14 + 32);
 }
 
-function getColumnWidth<T extends Record<string, ReactNode>>(column: string, rows: T[]) {
+function getColumnWidth<T extends Record<string, ReactNode>>(column: string, rows: T[], showFullText = false) {
   const contentWidth = rows.reduce((longest, row) => {
     const value = getTableText(row[column]);
-    return Math.max(longest, value ? getTextDisplayWidth(value) : 0);
+    return Math.max(longest, value ? getTextDisplayWidth(value, showFullText ? Number.POSITIVE_INFINITY : 16) : 0);
   }, getTextDisplayWidth(column));
   const minimumWidth = tableColumnMinimumWidths[column] ?? tableColumnMinimumWidthByKind[getTableColumnWidthKind(column)];
-  return Math.max(minimumWidth, contentWidth);
+  return Math.max(minimumWidth, contentWidth + (showFullText ? 24 : 0));
 }
 
 function TableCellContent({
   value,
+  showFullText = false,
   onShowTooltip,
   onHideTooltip,
 }: {
   value: ReactNode;
+  showFullText?: boolean;
   onShowTooltip: (content: string, target: HTMLElement) => void;
   onHideTooltip: () => void;
 }) {
   const text = getTableText(value);
-  const shouldTruncate = Boolean(text && Array.from(text).length > 16);
+  const shouldTruncate = Boolean(!showFullText && text && Array.from(text).length > 16);
   if (!shouldTruncate || !text) return <>{value}</>;
   return (
     <span
@@ -666,6 +936,8 @@ function DataTable<T extends Record<string, ReactNode>>({
   rowKey,
   onRowClick,
   activeRowKey,
+  fullTextColumns = [],
+  selectable = false,
 }: {
   columns: string[];
   rows: T[];
@@ -673,11 +945,14 @@ function DataTable<T extends Record<string, ReactNode>>({
   rowKey?: (row: T, index: number) => string | number;
   onRowClick?: (row: T, index: number) => void;
   activeRowKey?: string | number | null;
+  fullTextColumns?: string[];
+  selectable?: boolean;
 }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedRows, setSelectedRows] = useState<Set<number>>(() => new Set());
   const [scrollState, setScrollState] = useState({ hasOverflow: false, showLeftShadow: false, showRightShadow: false });
+  const [tableViewportWidth, setTableViewportWidth] = useState(0);
   const [tooltip, setTooltip] = useState<{ content: string; left: number; top: number } | null>(null);
   const tableWrapRef = useRef<HTMLDivElement>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -688,17 +963,25 @@ function DataTable<T extends Record<string, ReactNode>>({
   const visibleRowIndexes = pageRows.map((_, index) => pageStart + index);
   const allVisibleRowsSelected = visibleRowIndexes.length > 0 && visibleRowIndexes.every((index) => selectedRows.has(index));
   const someVisibleRowsSelected = visibleRowIndexes.some((index) => selectedRows.has(index));
-  const columnWidths = columns.map((column) => getColumnWidth(column, rows));
+  const columnWidths = columns.map((column) => getColumnWidth(column, rows, fullTextColumns.includes(column)));
   const actionRows = actions ? rows.map((row) => getActionItems(actions(row))) : [];
   const actionColumnWidth = actions ? getActionColumnWidth(actionRows) : 0;
   const selectedActionRows = Array.from(selectedRows, (rowIndex) => actionRows[rowIndex]).filter((actionItems): actionItems is TableAction[] => Boolean(actionItems));
-  const canBatchDelete = selectedActionRows.length > 0 && selectedActionRows.every((actionItems) => actionItems.some((action) => action.label.includes("删除")));
-  const tableMinWidth = 52 + columnWidths.reduce((total, width) => total + width, 0) + actionColumnWidth;
-  const tableWidth = actions ? "100%" : `${tableMinWidth}px`;
+  const canBatchDelete = selectedActionRows.length > 0 && selectedActionRows.every((actionItems) => actionItems.some((action) => action.label.includes("删除") && !action.isDisabled));
+  const contentColumnsWidth = columnWidths.reduce((total, width) => total + width, 0);
+  const fixedColumnsWidth = (selectable ? 52 : 0) + actionColumnWidth;
+  const tableMinWidth = fixedColumnsWidth + contentColumnsWidth;
+  const renderedTableWidth = actions ? Math.max(tableMinWidth, tableViewportWidth) : tableMinWidth;
+  const contentFillWidth = actions ? Math.max(0, renderedTableWidth - tableMinWidth) : 0;
+  const tableWidth = `${renderedTableWidth}px`;
+  const renderedColumnWidths = actions
+    ? columnWidths.map((width) => width + contentFillWidth * (width / contentColumnsWidth))
+    : columnWidths;
 
   const updateScrollState = () => {
     const tableWrap = tableWrapRef.current;
     if (!tableWrap) return;
+    setTableViewportWidth((current) => current === tableWrap.clientWidth ? current : tableWrap.clientWidth);
     const maxScrollLeft = Math.max(0, tableWrap.scrollWidth - tableWrap.clientWidth);
     const hasOverflow = maxScrollLeft > 1;
     const nextState = {
@@ -780,18 +1063,16 @@ function DataTable<T extends Record<string, ReactNode>>({
       >
         <table style={{ width: tableWidth, minWidth: `${tableMinWidth}px` }}>
           <colgroup>
-            <col className="table-select-column" />
-            {columnWidths.map((width, index) => <col key={columns[index]} style={{ width }} />)}
-            {actions && <col className="table-spacer-column" />}
+            {selectable && <col className="table-select-column" style={{ width: 52 }} />}
+            {renderedColumnWidths.map((width, index) => <col key={columns[index]} style={{ width }} />)}
             {actions && <col className="table-action-column" style={{ width: actionColumnWidth }} />}
           </colgroup>
           <thead>
             <tr>
-              <th className="table-select-cell table-sticky-left">
+              {selectable && <th className="table-select-cell table-sticky-left">
                 <input ref={selectAllRef} type="checkbox" aria-label="选择当前页全部数据" checked={allVisibleRowsSelected} onChange={toggleVisibleRows} />
-              </th>
+              </th>}
               {columns.map((column) => <th key={column}>{column}</th>)}
-              {actions && <th className="table-spacer-cell" aria-hidden="true" />}
               {actions && <th className="table-action-cell table-sticky-right">操作</th>}
             </tr>
           </thead>
@@ -806,15 +1087,14 @@ function DataTable<T extends Record<string, ReactNode>>({
                   key={key}
                   onClick={onRowClick ? () => onRowClick(row, rowIndex) : undefined}
                 >
-                  <td className="table-select-cell table-sticky-left">
+                  {selectable && <td className="table-select-cell table-sticky-left">
                     <input type="checkbox" aria-label={`选择第 ${rowIndex + 1} 条数据`} checked={selectedRows.has(rowIndex)} onClick={(event) => event.stopPropagation()} onChange={() => toggleRow(rowIndex)} />
-                  </td>
+                  </td>}
                   {columns.map((column) => (
                     <td key={column}>
-                      <TableCellContent value={row[column]} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} />
+                      <TableCellContent value={row[column]} showFullText={fullTextColumns.includes(column)} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} />
                     </td>
                   ))}
-                  {actions && <td className="table-spacer-cell" aria-hidden="true" />}
                   {actions && <td className="table-action-cell table-sticky-right">{actions(row)}</td>}
                 </tr>
               );
@@ -822,7 +1102,7 @@ function DataTable<T extends Record<string, ReactNode>>({
           </tbody>
         </table>
       </div>
-      {selectedRows.size > 0 ? (
+      {selectable && selectedRows.size > 0 ? (
         <div className="table-bottom-bar batch-selection-bar">
           <div className="batch-selection-actions">
             <span>已选 {selectedRows.size} 条</span>
@@ -840,8 +1120,13 @@ function DataTable<T extends Record<string, ReactNode>>({
   );
 }
 
-function ReportManagement({ openModal }: { openModal: OpenModal }) {
+function ReportManagement({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
   const [reports, setReports] = useState(reportRows);
+
+  const sortedReports = useMemo(() => reports
+    .map((report, index) => ({ report, index }))
+    .sort((a, b) => Number(b.report.是否置顶 === "是") - Number(a.report.是否置顶 === "是") || a.index - b.index)
+    .map(({ report }) => report), [reports]);
 
   const updateReport = (title: string, patch: Partial<(typeof reportRows)[number]>) => {
     setReports((list) => list.map((report) => (report.报告标题 === title ? { ...report, ...patch } : report)));
@@ -880,21 +1165,37 @@ function ReportManagement({ openModal }: { openModal: OpenModal }) {
       </div>
       <DataTable
         columns={["报告标题", "报告类型", "报告来源", "所属领域", "上传时间", "内容摘要", "状态", "是否置顶"]}
-        rows={reports.map((row) => ({ ...row, 原始状态: row.状态, 状态: <StatusTag value={row.状态} /> }))}
+        rows={sortedReports.map((row) => ({ ...row, 原始状态: row.状态, 状态: <StatusTag value={row.状态} />, 是否置顶: <PinState pinned={row.是否置顶 === "是"} />, 原始置顶状态: row.是否置顶 }))}
+        selectable
+        rowKey={(row) => String(row.报告标题)}
         actions={(row) => (
           <ActionLinks
             actions={[
               row.原始状态 === "下架" ? "报告上架" : "报告下架",
               "信息修改",
-              row.原始状态 === "下架" && "报告删除",
-              row.是否置顶 === "是" ? "取消置顶" : "置顶",
+              (row.原始状态 === "下架" || row.原始置顶状态 === "是") && "报告删除",
+              row.原始置顶状态 === "是" ? "取消置顶" : "置顶",
             ]}
+            disabledActions={row.原始置顶状态 === "是" ? ["报告删除"] : []}
             onAction={(action) => {
               const title = String(row.报告标题);
               const report = reports.find((item) => item.报告标题 === title);
               if (!report) return;
-              if (action === "报告上架" || action === "报告下架") updateReport(title, { 状态: action === "报告上架" ? "上架" : "下架" });
-              if (action === "置顶" || action === "取消置顶") updateReport(title, { 是否置顶: action === "置顶" ? "是" : "否" });
+              if (action === "报告上架" || action === "报告下架") {
+                updateReport(title, { 状态: action === "报告上架" ? "上架" : "下架" });
+                notify(action === "报告上架" ? "上架成功" : "下架成功");
+              }
+              if (action === "置顶" || action === "取消置顶") {
+                if (action === "置顶") {
+                  setReports((list) => {
+                    const target = list.find((item) => item.报告标题 === title);
+                    return target ? [{ ...target, 是否置顶: "是" }, ...list.filter((item) => item.报告标题 !== title)] : list;
+                  });
+                } else {
+                  updateReport(title, { 是否置顶: "否" });
+                }
+                notify(action === "置顶" ? "置顶成功，已移至列表顶部" : "取消置顶成功");
+              }
               if (action === "信息修改") {
                 openModal("report", {
                   mode: "edit",
@@ -957,7 +1258,7 @@ function createWorkflowNodes(workflowId: string): WorkflowNode[] {
   return [createNode("start", "start"), createNode("process", "process"), createNode("end", "end")];
 }
 
-function WorkflowCenter({ openModal }: { openModal: OpenModal }) {
+function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
   const [view, setView] = useState<"management" | "designer">("management");
   const [workflowList, setWorkflowList] = useState(initialWorkflowRows);
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
@@ -977,6 +1278,28 @@ function WorkflowCenter({ openModal }: { openModal: OpenModal }) {
 
   const updateWorkflowStatus = (workflowId: string, 发布状态: string) => {
     setWorkflowList((list) => list.map((workflow) => (workflow.id === workflowId ? { ...workflow, 发布状态 } : workflow)));
+  };
+
+  const createWorkflowModel = () => {
+    const id = `workflow-${Date.now()}`;
+    const nextNumber = workflowList.reduce((maximum, item) => {
+      const current = Number(item.流程ID.split("-").at(-1));
+      return Number.isFinite(current) ? Math.max(maximum, current) : maximum;
+    }, 0) + 1;
+    const nextIndex = String(nextNumber).padStart(3, "0");
+    const workflow = {
+      id,
+      流程ID: `FLOW-202607-${nextIndex}`,
+      流程名称: "未命名流程",
+      发布时间: "-",
+      发布状态: "未发布",
+    };
+    const nodes = createWorkflowNodes(id);
+    setWorkflowList((list) => [...list, workflow]);
+    setNodesByWorkflow((current) => ({ ...current, [id]: nodes }));
+    setSelectedWorkflowId(id);
+    setSelectedNodeId(nodes[0]?.id ?? null);
+    setView("designer");
   };
 
   const updateNode = (nodeId: string, patch: Partial<WorkflowNode>) => {
@@ -1028,23 +1351,34 @@ function WorkflowCenter({ openModal }: { openModal: OpenModal }) {
   if (view === "management") {
     return (
       <section className="card page-card workflow-management">
-        <div className="workflow-management-label">表单页面管理</div>
+        <div className="table-toolbar workflow-toolbar">
+          <div><Button variant="primary" icon={Plus} onClick={createWorkflowModel}>新建流程建模</Button></div>
+        </div>
         <DataTable
-          columns={["名称", "发布时间", "发布状态"]}
+          columns={["流程ID", "流程名称", "发布时间", "发布状态"]}
+          fullTextColumns={["流程ID"]}
           rows={workflowList.map((workflow) => ({ ...workflow, 原始发布状态: workflow.发布状态, 发布状态: <StatusTag value={workflow.发布状态} /> }))}
+          selectable
           rowKey={(row) => String(row.id)}
           activeRowKey={selectedWorkflowId}
           onRowClick={(row) => openDesigner(String(row.id))}
           actions={(row) => (
             <ActionLinks
-              actions={[row.原始发布状态 === "发布" ? "下架" : "发布", "编辑", "删除"]}
+              actions={["编辑", "删除", "下架", "发布"]}
+              disabledActions={row.原始发布状态 === "已发布" ? ["发布"] : ["下架"]}
+              actionTipOverrides={row.原始发布状态 === "已发布"
+                ? { 发布: "当前流程已发布" }
+                : { 下架: "当前流程尚未发布" }}
               onAction={(action) => {
                 const workflowId = String(row.id);
                 if (action === "编辑") openDesigner(workflowId);
-                if (action === "发布" || action === "下架") updateWorkflowStatus(workflowId, action === "发布" ? "发布" : "下架");
+                if (action === "发布" || action === "下架") {
+                  updateWorkflowStatus(workflowId, action === "发布" ? "已发布" : "未发布");
+                  notify(action === "发布" ? "发布成功" : "下架成功");
+                }
                 if (action === "删除") {
                   openModal("delete", {
-                    payload: { message: `确认删除${row.名称}？` },
+                    payload: { message: `确认删除${row.流程名称}？` },
                     onConfirm: () => setWorkflowList((list) => list.filter((workflow) => workflow.id !== workflowId)),
                   });
                 }
@@ -1063,7 +1397,11 @@ function WorkflowCenter({ openModal }: { openModal: OpenModal }) {
           <Button variant="text" icon={ChevronLeft} onClick={() => setView("management")}>返回</Button>
           <strong>流程设计表单</strong>
         </div>
-        <Button variant="primary" onClick={() => selectedWorkflow && updateWorkflowStatus(selectedWorkflow.id, "发布")}>发布</Button>
+        <Button variant="primary" onClick={() => {
+          if (!selectedWorkflow) return;
+          updateWorkflowStatus(selectedWorkflow.id, "已发布");
+          notify("发布成功");
+        }}>发布</Button>
       </header>
       <div className="process-designer-main">
         <aside className="node-palette">
@@ -1140,38 +1478,387 @@ function WorkflowCenter({ openModal }: { openModal: OpenModal }) {
   );
 }
 
-function FormCenter() {
-  const components = ["单行文本", "多行文本", "数字字段", "日期时间", "单选按钮组", "复选框组", "下拉框"];
-  const [tab, setTab] = useState<"components" | "rules">("components");
+const formComponentTypes = ["单行文本", "多行文本", "数字字段", "日期时间", "单选按钮组", "复选框组", "下拉框"] as const;
+type FormComponentType = (typeof formComponentTypes)[number];
+
+type FormComponentRules = {
+  最大长度: string;
+  最小值: string;
+  最大值: string;
+  最小日期: string;
+  最大日期: string;
+  可选项: string[];
+  多选: boolean;
+};
+
+type FormDesignerComponent = {
+  id: string;
+  类型: FormComponentType;
+  字段名称: string;
+  规则: FormComponentRules;
+};
+
+type FormDefinition = {
+  id: string;
+  表单ID: string;
+  表单名称: string;
+  最近修改时间: string;
+  组件: FormDesignerComponent[];
+};
+
+function createFormDesignerComponent(类型: FormComponentType, index: number, id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`): FormDesignerComponent {
+  return {
+    id,
+    类型,
+    字段名称: `${类型}${index}`,
+    规则: {
+      最大长度: 类型 === "多行文本" ? "500" : "100",
+      最小值: "0",
+      最大值: "100",
+      最小日期: "",
+      最大日期: "",
+      可选项: ["选项一", "选项二"],
+      多选: false,
+    },
+  };
+}
+
+const initialFormDefinitions: FormDefinition[] = [
+  {
+    id: "form-report",
+    表单ID: "FORM-202607-001",
+    表单名称: "报告审核表单",
+    最近修改时间: "2026-07-10 14:30",
+    组件: [
+      createFormDesignerComponent("单行文本", 1, "form-report-title"),
+      createFormDesignerComponent("下拉框", 2, "form-report-type"),
+      createFormDesignerComponent("多行文本", 3, "form-report-summary"),
+    ],
+  },
+  {
+    id: "form-scholar",
+    表单ID: "FORM-202607-002",
+    表单名称: "认证学者审核表单",
+    最近修改时间: "2026-07-09 10:15",
+    组件: [
+      createFormDesignerComponent("单行文本", 1, "form-scholar-name"),
+      createFormDesignerComponent("日期时间", 2, "form-scholar-date"),
+      createFormDesignerComponent("单选按钮组", 3, "form-scholar-radio"),
+    ],
+  },
+];
+
+const formComponentIcons: Record<FormComponentType, LucideIcon> = {
+  单行文本: FileText,
+  多行文本: FileText,
+  数字字段: BarChart3,
+  日期时间: CalendarDays,
+  单选按钮组: CheckCircle2,
+  复选框组: ClipboardCheck,
+  下拉框: ChevronDown,
+};
+
+function FormComponentPreview({ component }: { component: FormDesignerComponent }) {
+  const options = component.规则.可选项.length > 0 ? component.规则.可选项 : ["选项"];
   return (
-    <section className="card page-card">
-      <div className="resource-header">
-        <div className="resource-tabs">
-          <button className={tab === "components" ? "active" : ""} onClick={() => setTab("components")}>组件</button>
-          <button className={tab === "rules" ? "active" : ""} onClick={() => setTab("rules")}>规则配置</button>
-        </div>
-        <Button variant="primary" icon={FileText} onClick={() => window.print()}>打印成表格</Button>
-      </div>
-      {tab === "components" && (
-        <div className="role-grid">
-          {components.map((name) => (
-            <article className="role-card" key={name}>
-              <div className="role-card-head"><span><FileText size={21} /></span><div><h3>{name}</h3></div></div>
-            </article>
+    <div className="form-component-preview">
+      <label>{component.字段名称}</label>
+      {component.类型 === "单行文本" && <input type="text" placeholder="请输入" readOnly />}
+      {component.类型 === "多行文本" && <textarea placeholder="请输入" readOnly />}
+      {component.类型 === "数字字段" && <input type="number" placeholder="请输入" readOnly />}
+      {component.类型 === "日期时间" && <input type="datetime-local" readOnly />}
+      {(component.类型 === "单选按钮组" || component.类型 === "复选框组") && (
+        <div className="form-preview-options">
+          {options.map((option, index) => (
+            <label key={`${option}-${index}`}>
+              <input
+                type={component.类型 === "单选按钮组" ? "radio" : "checkbox"}
+                name={`${component.id}-preview-options`}
+                aria-disabled="true"
+                tabIndex={-1}
+                readOnly
+              />
+              <span>{option}</span>
+            </label>
           ))}
         </div>
       )}
-      {tab === "rules" && (
-        <form className="page-form form-center-rules">
-          <div className="form-row">
-            <FormField label="最大长度"><input type="text" /></FormField>
-            <FormField label="最大最小值"><input type="number" /></FormField>
-          </div>
-          <div className="form-row">
-            <FormField label="最大最小日期"><span className="date-range-fields"><DateField /><DateField /></span></FormField>
-            <FormField label="可选项/多选"><FormSelect options={["可选项", "多选"]} /></FormField>
-          </div>
-        </form>
+      {component.类型 === "下拉框" && <select disabled><option>{component.规则.多选 ? "请选择，可多选" : "请选择"}</option></select>}
+    </div>
+  );
+}
+
+function FormOptionEditor({ options, onChange }: { options: string[]; onChange: (options: string[]) => void }) {
+  return (
+    <div className="form-option-editor">
+      {options.map((option, index) => (
+        <div className="form-option-row" key={`${index}-${option}`}>
+          <input aria-label={`选项 ${index + 1}`} value={option} onChange={(event) => onChange(options.map((item, itemIndex) => itemIndex === index ? event.target.value : item))} />
+          <button type="button" aria-label={`删除选项 ${index + 1}`} disabled={options.length <= 1} onClick={() => onChange(options.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={15} /></button>
+        </div>
+      ))}
+      <button type="button" className="form-add-option" onClick={() => onChange([...options, `选项${options.length + 1}`])}><Plus size={14} />添加选项</button>
+    </div>
+  );
+}
+
+function FormRuleEditor({ component, onChange }: { component: FormDesignerComponent; onChange: (patch: Partial<FormComponentRules>) => void }) {
+  const rules = component.规则;
+  if (component.类型 === "单行文本" || component.类型 === "多行文本") {
+    return <label className="designer-field"><span>最大长度</span><input type="number" min="1" value={rules.最大长度} onChange={(event) => onChange({ 最大长度: event.target.value })} /></label>;
+  }
+  if (component.类型 === "数字字段") {
+    return (
+      <div className="form-rule-pair">
+        <label className="designer-field"><span>最小值</span><input type="number" value={rules.最小值} onChange={(event) => onChange({ 最小值: event.target.value })} /></label>
+        <label className="designer-field"><span>最大值</span><input type="number" value={rules.最大值} onChange={(event) => onChange({ 最大值: event.target.value })} /></label>
+      </div>
+    );
+  }
+  if (component.类型 === "日期时间") {
+    return (
+      <div className="form-rule-pair">
+        <label className="designer-field"><span>最小日期</span><input type="date" value={rules.最小日期} onChange={(event) => onChange({ 最小日期: event.target.value })} /></label>
+        <label className="designer-field"><span>最大日期</span><input type="date" value={rules.最大日期} onChange={(event) => onChange({ 最大日期: event.target.value })} /></label>
+      </div>
+    );
+  }
+  return (
+    <>
+      <div className="designer-field"><span>可选项</span><FormOptionEditor options={rules.可选项} onChange={(可选项) => onChange({ 可选项 })} /></div>
+      {component.类型 === "下拉框" && (
+        <div className="form-switch-setting">
+          <span>允许多选</span>
+          <button
+            type="button"
+            role="switch"
+            aria-label="允许多选"
+            aria-checked={rules.多选}
+            className={`form-switch ${rules.多选 ? "checked" : ""}`}
+            onClick={() => onChange({ 多选: !rules.多选 })}
+          ><span /></button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function FormPrintTable({ form }: { form: FormDefinition }) {
+  return (
+    <div className="form-print-table-wrap">
+      <table className="form-print-table">
+        <thead><tr>{form.组件.map((component) => <th key={component.id}>{component.字段名称}</th>)}</tr></thead>
+        <tbody><tr>{form.组件.map((component) => <td key={component.id}>—</td>)}</tr></tbody>
+      </table>
+    </div>
+  );
+}
+
+function FormCenter({ openModal, notify, onWorkspaceChange }: { openModal: OpenModal; notify: Notify; onWorkspaceChange: (open: boolean) => void }) {
+  const [view, setView] = useState<"management" | "workspace">("management");
+  const [forms, setForms] = useState<FormDefinition[]>(initialFormDefinitions);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const selectedForm = forms.find((form) => form.id === selectedFormId) ?? null;
+  const selectedComponent = selectedForm?.组件.find((component) => component.id === selectedComponentId) ?? selectedForm?.组件[0] ?? null;
+
+  useEffect(() => {
+    onWorkspaceChange(view === "workspace");
+  }, [onWorkspaceChange, view]);
+
+  const updateSelectedForm = (updater: (form: FormDefinition) => FormDefinition) => {
+    if (!selectedFormId) return;
+    setForms((list) => list.map((form) => form.id === selectedFormId ? updater(form) : form));
+  };
+
+  const openWorkspace = (formId: string, showPreview = false) => {
+    const form = forms.find((item) => item.id === formId);
+    setSelectedFormId(formId);
+    setSelectedComponentId(form?.组件[0]?.id ?? null);
+    setPreviewOpen(showPreview);
+    setView("workspace");
+  };
+
+  const createForm = () => {
+    const nextNumber = forms.reduce((maximum, form) => {
+      const current = Number(form.表单ID.split("-").at(-1));
+      return Number.isFinite(current) ? Math.max(maximum, current) : maximum;
+    }, 0) + 1;
+    const id = `form-${Date.now()}`;
+    const nextForm: FormDefinition = {
+      id,
+      表单ID: `FORM-202607-${String(nextNumber).padStart(3, "0")}`,
+      表单名称: "未命名表单",
+      最近修改时间: "2026-07-13 14:00",
+      组件: [],
+    };
+    setForms((list) => [...list, nextForm]);
+    setSelectedFormId(id);
+    setSelectedComponentId(null);
+    setPreviewOpen(false);
+    setView("workspace");
+  };
+
+  const addComponent = (类型: FormComponentType) => {
+    if (!selectedForm) return;
+    const component = createFormDesignerComponent(类型, selectedForm.组件.length + 1);
+    updateSelectedForm((form) => ({ ...form, 组件: [...form.组件, component] }));
+    setSelectedComponentId(component.id);
+    notify(`已添加${类型}`);
+  };
+
+  const updateComponent = (componentId: string, patch: Partial<FormDesignerComponent>) => {
+    updateSelectedForm((form) => ({ ...form, 组件: form.组件.map((component) => component.id === componentId ? { ...component, ...patch } : component) }));
+  };
+
+  const updateComponentRules = (componentId: string, patch: Partial<FormComponentRules>) => {
+    updateSelectedForm((form) => ({
+      ...form,
+      组件: form.组件.map((component) => component.id === componentId ? { ...component, 规则: { ...component.规则, ...patch } } : component),
+    }));
+  };
+
+  const moveComponent = (componentId: string, direction: -1 | 1) => {
+    updateSelectedForm((form) => {
+      const index = form.组件.findIndex((component) => component.id === componentId);
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= form.组件.length) return form;
+      const components = [...form.组件];
+      [components[index], components[targetIndex]] = [components[targetIndex], components[index]];
+      return { ...form, 组件: components };
+    });
+  };
+
+  const removeComponent = (componentId: string) => {
+    if (!selectedForm) return;
+    const remaining = selectedForm.组件.filter((component) => component.id !== componentId);
+    updateSelectedForm((form) => ({ ...form, 组件: remaining }));
+    setSelectedComponentId(remaining[0]?.id ?? null);
+    notify("组件已删除");
+  };
+
+  const saveForm = () => {
+    updateSelectedForm((form) => ({ ...form, 最近修改时间: "2026-07-13 14:00" }));
+    notify("保存成功");
+  };
+
+  const printForm = () => {
+    if (!selectedForm || selectedForm.组件.length === 0) {
+    notify("请先添加表单组件", "warning");
+      return;
+    }
+    notify("正在打开打印预览");
+    window.print();
+  };
+
+  if (view === "management") {
+    return (
+      <section className="card page-card form-management">
+        <div className="table-toolbar workflow-toolbar"><div><Button variant="primary" icon={Plus} onClick={createForm}>新建表单</Button></div></div>
+        <DataTable
+          columns={["表单ID", "表单名称", "组件数量", "最近修改时间"]}
+          fullTextColumns={["表单ID"]}
+          rows={forms.map((form) => ({ id: form.id, 表单ID: form.表单ID, 表单名称: form.表单名称, 组件数量: form.组件.length, 最近修改时间: form.最近修改时间 }))}
+          selectable
+          rowKey={(row) => String(row.id)}
+          onRowClick={(row) => openWorkspace(String(row.id))}
+          actions={(row) => (
+            <ActionLinks
+              actions={["设计", "打印", "删除"]}
+              onAction={(action) => {
+                const formId = String(row.id);
+                if (action === "设计") openWorkspace(formId);
+                if (action === "打印") openWorkspace(formId, true);
+                if (action === "删除") openModal("delete", {
+                  payload: { message: `确认删除${row.表单名称}？` },
+                  onConfirm: () => setForms((list) => list.filter((form) => form.id !== formId)),
+                });
+              }}
+            />
+          )}
+        />
+      </section>
+    );
+  }
+
+  if (!selectedForm) return null;
+
+  return (
+    <section className="form-workspace">
+      <header className="form-workspace-header">
+        <div className="form-workspace-identity">
+          <Button variant="text" icon={ChevronLeft} onClick={() => { setPreviewOpen(false); setView("management"); }}>返回</Button>
+          <label><span>表单名称</span><input aria-label="表单名称" value={selectedForm.表单名称} onChange={(event) => updateSelectedForm((form) => ({ ...form, 表单名称: event.target.value }))} /></label>
+        </div>
+        <div className="form-workspace-actions">
+          <Button icon={Eye} onClick={() => setPreviewOpen(true)}>预览</Button>
+          <Button icon={Printer} onClick={printForm}>打印</Button>
+          <Button variant="primary" icon={Save} onClick={saveForm}>保存表单</Button>
+        </div>
+      </header>
+
+      <div className="form-designer-layout">
+          <aside className="form-component-palette">
+            <div className="form-panel-title">组件库</div>
+            <div className="form-component-list">
+              {formComponentTypes.map((type) => {
+                const Icon = formComponentIcons[type];
+                return <button type="button" key={type} onClick={() => addComponent(type)}><Icon size={16} /><span>{type}</span><Plus size={14} /></button>;
+              })}
+            </div>
+          </aside>
+
+          <section className="form-designer-canvas" aria-label="表单设计画布">
+            {selectedForm.组件.length === 0 ? (
+              <div className="form-empty-state"><FileText size={34} /><b>暂无表单组件</b><span>从左侧组件库添加组件</span></div>
+            ) : (
+              <div className="form-canvas-fields">
+                {selectedForm.组件.map((component, index) => (
+                  <article className={`form-canvas-field ${selectedComponent?.id === component.id ? "active" : ""}`} key={component.id} onClick={() => setSelectedComponentId(component.id)}>
+                    <GripVertical size={16} aria-hidden="true" />
+                    <FormComponentPreview component={component} />
+                    <div className="form-field-actions">
+                      <button type="button" aria-label="上移组件" disabled={index === 0} onClick={(event) => { event.stopPropagation(); moveComponent(component.id, -1); }}><ArrowUp size={15} /></button>
+                      <button type="button" aria-label="下移组件" disabled={index === selectedForm.组件.length - 1} onClick={(event) => { event.stopPropagation(); moveComponent(component.id, 1); }}><ArrowDown size={15} /></button>
+                      <button type="button" aria-label="删除组件" onClick={(event) => { event.stopPropagation(); removeComponent(component.id); }}><Trash2 size={15} /></button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <aside className="form-component-property">
+            <div className="form-panel-title">字段配置</div>
+            {selectedComponent ? (
+              <div className="form-property-body">
+                <label className="designer-field"><span>字段名称</span><input value={selectedComponent.字段名称} onChange={(event) => updateComponent(selectedComponent.id, { 字段名称: event.target.value })} /></label>
+                <div className="form-component-type"><span>组件类型</span><b>{selectedComponent.类型}</b></div>
+                <section className="form-property-rules" aria-label="组件规则">
+                  <div className="form-property-section-title">组件规则</div>
+                  <FormRuleEditor component={selectedComponent} onChange={(patch) => updateComponentRules(selectedComponent.id, patch)} />
+                </section>
+              </div>
+            ) : <div className="form-panel-empty">请选择或添加组件</div>}
+          </aside>
+      </div>
+
+      {selectedForm.组件.length > 0 && <section className="form-print-panel form-print-source" aria-hidden="true"><FormPrintTable form={selectedForm} /></section>}
+
+      {previewOpen && createPortal(
+        <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setPreviewOpen(false)}>
+          <section className="modal form-preview-modal" role="dialog" aria-modal="true" aria-labelledby="form-preview-title">
+            <header className="modal-header"><div><h2 id="form-preview-title">表单预览</h2></div><button type="button" aria-label="关闭预览" onClick={() => setPreviewOpen(false)}><X size={20} /></button></header>
+            <div className="form-preview-modal-body">
+              {selectedForm.组件.length === 0
+                ? <div className="form-empty-state"><Printer size={34} /><b>暂无可预览内容</b><span>请先在表单设计器中添加组件</span></div>
+                : <FormPrintTable form={selectedForm} />}
+            </div>
+            <footer className="modal-footer"><Button onClick={() => setPreviewOpen(false)}>关闭</Button><Button variant="primary" icon={Printer} onClick={printForm}>打印</Button></footer>
+          </section>
+        </div>,
+        document.body,
       )}
     </section>
   );
@@ -1224,161 +1911,215 @@ function AuditContent() {
   );
 }
 
-function DashboardMetric({ label, value, icon: Icon }: { label: string; value: string; icon: LucideIcon }) {
+function DashboardMetric({ label, value, trend, direction, icon: Icon }: { label: string; value: string; trend: string; direction: "up" | "down"; icon: LucideIcon }) {
   return (
     <article className="dashboard-metric">
       <div className="dashboard-metric-icon"><Icon size={20} /></div>
-      <div><span>{label}</span><strong>{value}</strong></div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <small className={direction}>{direction === "up" ? <ArrowUp size={13} /> : <ArrowDown size={13} />}{trend}</small>
+      </div>
     </article>
   );
 }
 
 function EventGrowthTrend({ data }: { data: DashboardData }) {
-  const width = 560;
-  const height = 220;
+  const [hoveredPoint, setHoveredPoint] = useState<{ index: number; label: string; x: number } | null>(null);
+  const width = 680;
+  const height = 240;
   const chartTop = 20;
   const chartBottom = 42;
   const chartLeft = 20;
   const chartRight = 20;
-  const max = Math.max(...data.trend.map((point) => point.value));
-  const min = Math.min(...data.trend.map((point) => point.value));
-  const span = Math.max(1, max - min);
-  const points = data.trend.map((point, index) => ({
-    ...point,
-    x: chartLeft + (index / Math.max(1, data.trend.length - 1)) * (width - chartLeft - chartRight),
-    y: chartTop + ((max - point.value) / span) * (height - chartTop - chartBottom),
-  }));
+  const makePoints = (key: "eventValue" | "userValue") => {
+    const values = data.trend.map((point) => point[key]);
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    const span = Math.max(1, max - min);
+    return data.trend.map((point, index) => ({
+      ...point,
+      index,
+      x: chartLeft + (index / Math.max(1, data.trend.length - 1)) * (width - chartLeft - chartRight),
+      y: chartTop + ((max - point[key]) / span) * (height - chartTop - chartBottom),
+    }));
+  };
+  const eventPoints = makePoints("eventValue");
+  const userPoints = makePoints("userValue");
   return (
     <section className="dashboard-panel trend-panel">
-      <h3>事件增长趋势</h3>
+      <div className="dashboard-panel-heading">
+        <h3>事件增长趋势与活跃用户波形图</h3>
+        <div className="chart-legend"><span className="event">事件增长趋势</span><span className="user">活跃用户</span></div>
+      </div>
       <div className="trend-chart">
-        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="事件增长趋势">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="事件增长趋势与活跃用户波形图">
           {[0, 1, 2, 3].map((line) => {
             const y = chartTop + line * ((height - chartTop - chartBottom) / 3);
             return <line key={line} x1={chartLeft} x2={width - chartRight} y1={y} y2={y} className="trend-grid-line" />;
           })}
-          <polyline className="trend-line" points={points.map((point) => `${point.x},${point.y}`).join(" ")} />
-          {points.map((point) => (
-            <g key={point.label} className="trend-point">
-              <circle cx={point.x} cy={point.y} r="4"><title>{`${point.label} ${point.value}`}</title></circle>
+          <polyline className="trend-line event-line" points={eventPoints.map((point) => `${point.x},${point.y}`).join(" ")} />
+          <polyline className="trend-line user-line" points={userPoints.map((point) => `${point.x},${point.y}`).join(" ")} />
+          {eventPoints.map((point) => (
+            <g key={`event-${point.label}`} className={`trend-point event-point ${hoveredPoint?.index === point.index ? "is-hovered" : ""}`}>
+              <circle cx={point.x} cy={point.y} r="5" tabIndex={0} aria-label={`${point.label} 事件增长趋势 ${point.eventValue}`} onClick={() => setHoveredPoint({ index: point.index, label: point.label, x: point.x })} onFocus={() => setHoveredPoint({ index: point.index, label: point.label, x: point.x })} onBlur={() => setHoveredPoint(null)} onMouseEnter={() => setHoveredPoint({ index: point.index, label: point.label, x: point.x })} onMouseLeave={() => setHoveredPoint(null)}><title>{`${point.label} 事件 ${point.eventValue}`}</title></circle>
               <text x={point.x} y={height - 14} textAnchor="middle">{point.label}</text>
             </g>
           ))}
+          {userPoints.map((point) => <circle key={`user-${point.label}`} className={`user-point ${hoveredPoint?.index === point.index ? "is-hovered" : ""}`} cx={point.x} cy={point.y} r="5" tabIndex={0} aria-label={`${point.label} 活跃用户 ${point.userValue}`} onClick={() => setHoveredPoint({ index: point.index, label: point.label, x: point.x })} onFocus={() => setHoveredPoint({ index: point.index, label: point.label, x: point.x })} onBlur={() => setHoveredPoint(null)} onMouseEnter={() => setHoveredPoint({ index: point.index, label: point.label, x: point.x })} onMouseLeave={() => setHoveredPoint(null)}><title>{`${point.label} 活跃用户 ${point.userValue}`}</title></circle>)}
+          {hoveredPoint && (
+            <g className="chart-hover-layer" pointerEvents="none">
+              <line className="chart-hover-guide" x1={hoveredPoint.x} x2={hoveredPoint.x} y1={chartTop} y2={height - chartBottom} />
+              <g transform={`translate(${Math.min(width - 172, Math.max(8, hoveredPoint.x - 80))},8)`}>
+                <rect width="164" height="72" rx="4" />
+                <text className="chart-hover-title" x="12" y="18">{hoveredPoint.label}</text>
+                <circle className="chart-hover-marker event" cx="12" cy="38" r="3" />
+                <text className="chart-hover-label" x="22" y="42">事件增长趋势</text>
+                <text className="chart-hover-value" x="152" y="42" textAnchor="end">{data.trend[hoveredPoint.index].eventValue.toLocaleString()}</text>
+                <circle className="chart-hover-marker user" cx="12" cy="58" r="3" />
+                <text className="chart-hover-label" x="22" y="62">活跃用户</text>
+                <text className="chart-hover-value" x="152" y="62" textAnchor="end">{data.trend[hoveredPoint.index].userValue.toLocaleString()}</text>
+              </g>
+            </g>
+          )}
         </svg>
       </div>
     </section>
   );
 }
 
-function EventRanking({ data }: { data: DashboardData }) {
-  const max = Math.max(...data.ranking.map((item) => item.value));
+function EventFunnel({ data }: { data: DashboardData }) {
   return (
-    <section className="dashboard-panel ranking-panel">
-      <h3>事件排行</h3>
-      <ol>
-        {data.ranking.map((item, index) => (
-          <li key={item.label}>
-            <span className="ranking-index">{index + 1}</span>
-            <span className="ranking-label">{item.label}</span>
-            <span className="ranking-bar"><i style={{ width: `${(item.value / max) * 100}%` }} /></span>
-            <strong>{item.value}</strong>
-          </li>
+    <section className="dashboard-panel funnel-panel">
+      <h3>用户行为事件转化率漏斗模型</h3>
+      <div className="event-funnel" aria-label="用户行为事件转化率漏斗模型">
+        {data.funnel.map((step, index) => (
+          <div className={`funnel-step step-${index + 1}`} style={{ width: `${56 + (step.rate / 100) * 44}%` }} title={`${step.label}：${step.value}，转化率 ${step.rate}%`} tabIndex={0} key={step.label}>
+            <span>{step.label}</span><strong>{step.value}</strong><small>{step.rate}%</small>
+          </div>
         ))}
-      </ol>
+      </div>
+    </section>
+  );
+}
+
+function EventRankingTable({ data }: { data: DashboardData }) {
+  return (
+    <section className="dashboard-ranking-section">
+      <h3>热门事件排行榜</h3>
+      <div className="event-ranking-table-wrap">
+        <table className="event-ranking-table">
+          <thead><tr><th>排名</th><th>事件ID</th><th>埋点标签</th><th>触发次数</th><th>页面停留均时</th></tr></thead>
+          <tbody>{data.ranking.map((item, index) => <tr key={item.事件ID}><td><span className={`event-rank-number rank-${index + 1}`}>{index + 1}</span></td><td>{item.事件ID}</td><td>{item.埋点标签}</td><td>{item.触发次数}</td><td>{item.页面停留均时}</td></tr>)}</tbody>
+        </table>
+      </div>
     </section>
   );
 }
 
 function EventDashboard() {
   const [interval, setInterval] = useState<TimeInterval>("日");
+  const presets: Record<TimeInterval, [string, string]> = {
+    年: ["2026-01-01", "2026-12-31"],
+    月: ["2026-07-01", "2026-07-31"],
+    日: ["2026-07-13", "2026-07-13"],
+  };
+  const [dateRange, setDateRange] = useState<[string, string]>(presets.日);
   const data = eventDashboardData[interval];
+  const selectInterval = (nextInterval: TimeInterval) => {
+    setInterval(nextInterval);
+    setDateRange(presets[nextInterval]);
+  };
   return (
     <div className="event-dashboard">
-      <div className="filters dashboard-filter">
-        <FilterSelect label="时间区间" options={["年", "月", "日"]} value={interval} onChange={(value) => setInterval(value as TimeInterval)} />
+      <div className="dashboard-topbar">
+        <h2>埋点数据统计</h2>
+        <div className="dashboard-date-toolbar">
+          <span className="dashboard-date-label">日期范围</span>
+          <label className="dashboard-date-input"><input aria-label="开始日期" type="date" value={dateRange[0]} onChange={(event) => setDateRange([event.target.value, dateRange[1]])} /><CalendarDays size={16} /></label>
+          <i>—</i>
+          <label className="dashboard-date-input"><input aria-label="结束日期" type="date" value={dateRange[1]} onChange={(event) => setDateRange([dateRange[0], event.target.value])} /><CalendarDays size={16} /></label>
+          <div className="dashboard-date-shortcuts" aria-label="日期范围快捷筛选">
+            {(["年", "月", "日"] as TimeInterval[]).map((item) => <button type="button" className={interval === item ? "active" : ""} aria-pressed={interval === item} onClick={() => selectInterval(item)} key={item}>{item}</button>)}
+          </div>
+        </div>
       </div>
       <div className="dashboard-metrics">
-        <DashboardMetric label="事件总量" value={data.eventTotal} icon={Activity} />
-        <DashboardMetric label="活跃用户数" value={data.activeUsers} icon={Users} />
-        <DashboardMetric label="事件转化率" value={data.conversionRate} icon={BarChart3} />
+        <DashboardMetric label="事件总量" {...data.stats.eventTotal} icon={Activity} />
+        <DashboardMetric label="活跃用户数" {...data.stats.activeUsers} icon={Users} />
+        <DashboardMetric label="关键按钮点击率" {...data.stats.clickRate} icon={BarChart3} />
+        <DashboardMetric label="核心路径转化率" {...data.stats.pathConversion} icon={CheckCircle2} />
       </div>
       <div className="dashboard-data-panels">
         <EventGrowthTrend data={data} />
-        <EventRanking data={data} />
+        <EventFunnel data={data} />
       </div>
+      <EventRankingTable data={data} />
     </div>
   );
 }
 
 function EventTracking({ openModal, initialTab }: { openModal: OpenModal; initialTab: "info" | "stats" }) {
-  const [tab, setTab] = useState<"info" | "stats">(initialTab);
   const [events, setEvents] = useState(trackingRows);
+  const [moduleFilter, setModuleFilter] = useState("全部");
+  const [eventIdFilter, setEventIdFilter] = useState("");
 
   const updateEvent = (eventId: string, patch: Partial<(typeof trackingRows)[number]>) => {
     setEvents((list) => list.map((event) => (event.事件ID === eventId ? { ...event, ...patch } : event)));
   };
 
+  if (initialTab === "stats") return <section className="card page-card event-dashboard-page"><EventDashboard /></section>;
+
+  const filteredEvents = events.filter((event) => (
+    (moduleFilter === "全部" || event.所属功能模块 === moduleFilter)
+    && event.事件ID.toLowerCase().includes(eventIdFilter.trim().toLowerCase())
+  ));
+
   return (
     <section className="card page-card">
-      <div className="subtabs">
-        <button className={tab === "info" ? "active" : ""} onClick={() => setTab("info")}>埋点信息管理</button>
-        <button className={tab === "stats" ? "active" : ""} onClick={() => setTab("stats")}>埋点数据统计</button>
+      <div className="filters event-info-filters">
+        <FilterSelect label="模块" options={["全部", "报告管理", "审核管理", "用户管理", "权限配置"]} value={moduleFilter} onChange={setModuleFilter} />
+        <FilterInput label="事件ID" placeholder="请输入" value={eventIdFilter} onChange={setEventIdFilter} />
       </div>
-      {tab === "info" && (
-        <>
-          <div className="table-toolbar">
-            <div>
-              <Button
-                variant="primary"
-                icon={Plus}
-                onClick={() => openModal("tracking", {
-                  mode: "create",
-                  onSave: (values) => setEvents((list) => [...list, {
-                    事件ID: values.事件ID,
-                    所属功能模块: values.所属功能模块,
-                    埋点标签: values.埋点标签,
-                    埋点路径: values.埋点路径,
-                    触发机制: values.触发机制,
-                  }]),
-                })}
-              >新增埋点事件</Button>
-              <Button
-                icon={Upload}
-                onClick={() => openModal("tracking", { mode: "batch" })}
-              >批量上传埋点事件</Button>
-            </div>
-          </div>
-          <DataTable
-            columns={["事件ID", "所属功能模块", "埋点标签", "埋点路径", "触发机制"]}
-            rows={events}
-            actions={(row) => (
-              <ActionLinks
-                actions={["查询", "修改", "删除", "查看详情"]}
-                onAction={(action) => {
-                  const eventId = String(row.事件ID);
-                  const event = events.find((item) => item.事件ID === eventId);
-                  if (!event) return;
-                  if (action === "修改") {
-                    openModal("tracking", {
-                      mode: "edit",
-                      payload: event,
-                      onSave: (values) => updateEvent(eventId, values),
-                    });
-                  }
-                  if (action === "查询" || action === "查看详情") openModal("tracking", { mode: "detail", payload: event });
-                  if (action === "删除") {
-                    openModal("delete", {
-                      payload: { message: `确认删除${eventId}？` },
-                      onConfirm: () => setEvents((list) => list.filter((item) => item.事件ID !== eventId)),
-                    });
-                  }
-                }}
-              />
-            )}
+      <div className="table-toolbar event-info-toolbar">
+        <div>
+          <Button
+            variant="primary"
+            icon={Plus}
+            onClick={() => openModal("tracking", {
+              mode: "create",
+              onSave: (values) => setEvents((list) => [...list, {
+                事件ID: values.事件ID,
+                所属功能模块: values.所属功能模块,
+                埋点标签: values.埋点标签,
+                埋点路径: values.埋点路径,
+                触发机制: values.触发机制,
+                创建时间: "2026-07-13 14:30",
+              }]),
+            })}
+          >新增埋点</Button>
+          <Button icon={Upload} onClick={() => openModal("tracking", { mode: "batch" })}>批量上传</Button>
+        </div>
+      </div>
+      <DataTable
+        columns={["事件ID", "所属功能模块", "埋点标签", "埋点路径", "触发机制", "创建时间"]}
+        rows={filteredEvents}
+        rowKey={(row) => String(row.事件ID)}
+        fullTextColumns={["事件ID"]}
+        actions={(row) => (
+          <ActionLinks
+            actions={["查看详情", "修改", "删除"]}
+            onAction={(action) => {
+              const eventId = String(row.事件ID);
+              const event = events.find((item) => item.事件ID === eventId);
+              if (!event) return;
+              if (action === "修改") openModal("tracking", { mode: "edit", payload: event, onSave: (values) => updateEvent(eventId, values) });
+              if (action === "查看详情") openModal("tracking", { mode: "detail", payload: event });
+              if (action === "删除") openModal("delete", { payload: { message: `确认删除${eventId}？` }, onConfirm: () => setEvents((list) => list.filter((item) => item.事件ID !== eventId)) });
+            }}
           />
-        </>
-      )}
-      {tab === "stats" && <EventDashboard />}
+        )}
+      />
     </section>
   );
 }
@@ -1584,124 +2325,398 @@ function PageManagement({ openModal }: { openModal: OpenModal }) {
   );
 }
 
-function ResourceManagement() {
-  const [tab, setTab] = useState<"api" | "talent" | "report" | "thinktank">("api");
+function ResourceManagement({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
+  const [tab, setTab] = useState<"api" | "business">("api");
   return (
-    <section className="card page-card">
-      <div className="resource-tabs">
+    <section className="card page-card resource-management-page">
+      <div className="resource-tabs resource-primary-tabs" aria-label="资源管理类型">
         <button className={tab === "api" ? "active" : ""} onClick={() => setTab("api")}>接口资源管理</button>
-        <button className={tab === "talent" ? "active" : ""} onClick={() => setTab("talent")}>人才库资源</button>
-        <button className={tab === "report" ? "active" : ""} onClick={() => setTab("report")}>报告资源</button>
-        <button className={tab === "thinktank" ? "active" : ""} onClick={() => setTab("thinktank")}>智库资源</button>
+        <button className={tab === "business" ? "active" : ""} onClick={() => setTab("business")}>业务资源管理</button>
       </div>
-      {tab === "api" && <ApiResources />}
-      {tab === "talent" && <TalentPoolResources />}
-      {tab === "report" && <ReportResources />}
-      {tab === "thinktank" && <ThinkTankResources />}
+      {tab === "api" ? <ApiResources openModal={openModal} notify={notify} /> : <BusinessResources openModal={openModal} notify={notify} />}
     </section>
   );
 }
 
-function ApiResources() {
-  return (
-    <div className="reports-page">
-      <section className="card page-card">
-        <CardHeader title="令牌管理" />
-        <div className="table-toolbar">
-          <div><Button>生成</Button><Button>存储</Button><Button>注销</Button><Button icon={Copy}>复制令牌字符串</Button></div>
-        </div>
-        <div className="selected-person"><span>••••••••••••••••</span></div>
-      </section>
-      <section className="card page-card">
-        <CardHeader title="接口调用文档展示" />
-        <div className="filters">
-          <FilterInput label="模块 / 路径 / 关键词" placeholder="模块 / 路径 / 关键词" />
-        </div>
-        <DataTable
-          columns={["接口名称", "请求方法", "参数列表", "返回格式", "示例请求", "响应结果", "错误码说明"]}
-          rows={[
-            { 接口名称: "报告管理", 请求方法: "GET", 参数列表: "报告类型", 返回格式: "JSON", 示例请求: "/api/report", 响应结果: "成功", 错误码说明: "错误码说明" },
-            { 接口名称: "用户管理", 请求方法: "POST", 参数列表: "用户ID", 返回格式: "JSON", 示例请求: "/api/user", 响应结果: "成功", 错误码说明: "错误码说明" },
-          ]}
+function TokenValueCell({ value, onCopy }: { value: string; onCopy: () => void }) {
+  return <span className="token-value-cell"><code className="masked-token">{`${value.slice(0, 2)}...****...${value.slice(-4)}`}</code><button type="button" aria-label="复制Token" title="复制Token" onClick={onCopy}><Copy size={15} /></button></span>;
+}
+
+function TokenEditorModal({ mode, initialName, initialExpiryDate, close, save }: { mode: "create" | "edit"; initialName?: string; initialExpiryDate?: string; close: () => void; save: (applicationName: string, expiryDate: string) => void }) {
+  const [applicationName, setApplicationName] = useState(initialName ?? "");
+  const [expiryDate, setExpiryDate] = useState(initialExpiryDate ?? "2027-07-13");
+  const canSubmit = applicationName.trim().length > 0 && expiryDate.length > 0;
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="modal token-editor-modal" role="dialog" aria-modal="true" aria-label={mode === "create" ? "生成Token" : "编辑Token"}>
+        <ModalHeader
+          title={mode === "create" ? "生成Token" : "编辑Token"}
+          close={close}
         />
-      </section>
-      <section className="card page-card">
-        <CardHeader title="接口调用日志" />
-        <div className="filters">
-          <FilterInput label="时间范围" placeholder="时间范围" />
-          <FilterSelect label="调用结果" options={["成功", "失败"]} />
-          <FilterInput label="接口名称" placeholder="接口名称" />
+        <form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (canSubmit) save(applicationName.trim(), expiryDate); }}>
+          <div className="modal-form-body token-editor-form">
+            {mode === "create" && <ModalAlert tone="warning">Token 生成后仅在当前操作中完整复制，请妥善保存。</ModalAlert>}
+            <FormField label="应用名称" required><input value={applicationName} placeholder="请输入应用名称" onChange={(event) => setApplicationName(event.target.value)} /></FormField>
+            <FormField label="到期时间" required><DateField value={expiryDate} onChange={setExpiryDate} /></FormField>
+          </div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>{mode === "create" ? "生成" : "保存"}</Button></div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function ApiResources({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
+  const [tab, setTab] = useState<"tokens" | "docs" | "logs">("tokens");
+  const [tokens, setTokens] = useState(initialTokenRows);
+  const [tokenEditor, setTokenEditor] = useState<{ mode: "create" | "edit"; tokenId?: string } | null>(null);
+  const copyToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token);
+      notify("Token 已复制");
+    } catch {
+      notify("复制失败，请重试", "error");
+    }
+  };
+  return (
+    <div className="api-resource-workspace">
+      <div className="resource-subtabs" aria-label="接口资源管理功能">
+        <button className={tab === "tokens" ? "active" : ""} onClick={() => setTab("tokens")}>令牌管理</button>
+        <button className={tab === "docs" ? "active" : ""} onClick={() => setTab("docs")}>接口调用文档</button>
+        <button className={tab === "logs" ? "active" : ""} onClick={() => setTab("logs")}>接口调用日志</button>
+      </div>
+      {tab === "tokens" && (
+        <div className="resource-tab-content">
+          <div className="table-toolbar">
+            <div><Button variant="primary" icon={Plus} onClick={() => setTokenEditor({ mode: "create" })}>生成Token</Button></div>
+          </div>
+          <DataTable
+            columns={["应用名称", "Token字符串", "创建时间", "到期时间", "状态"]}
+            rows={tokens.map((item) => ({ ...item, 原始Token: item.Token字符串, 原始状态: item.状态, Token字符串: <TokenValueCell value={item.Token字符串} onCopy={() => copyToken(item.Token字符串)} />, 状态: <StatusTag value={item.状态} /> }))}
+            rowKey={(row) => String(row.id)}
+            selectable={false}
+            actions={(row) => (
+              <ActionLinks
+                actions={["编辑", "注销", "删除"]}
+                disabledActions={row.原始状态 === "已注销" ? ["注销"] : []}
+                onAction={(action) => {
+                  if (action === "编辑") {
+                    setTokenEditor({ mode: "edit", tokenId: String(row.id) });
+                    return;
+                  }
+                  if (action === "注销") {
+                    setTokens((list) => list.map((item) => item.id === row.id ? { ...item, 状态: "已注销" } : item));
+                    notify("Token 注销成功");
+                    return;
+                  }
+                  openModal("delete", {
+                    payload: { message: `确认删除${String(row.应用名称)}的Token？` },
+                    onConfirm: () => setTokens((list) => list.filter((item) => item.id !== row.id)),
+                  });
+                }}
+              />
+            )}
+          />
+          {tokenEditor && <TokenEditorModal
+            mode={tokenEditor.mode}
+            initialName={tokenEditor.mode === "edit" ? tokens.find((item) => item.id === tokenEditor.tokenId)?.应用名称 : undefined}
+            initialExpiryDate={tokenEditor.mode === "edit" ? tokens.find((item) => item.id === tokenEditor.tokenId)?.到期时间.slice(0, 10) : undefined}
+            close={() => setTokenEditor(null)}
+            save={(applicationName, expiryDate) => {
+              if (tokenEditor.mode === "create") {
+                const token = `eyJhbGciOiJIUzI1NiJ9.${Date.now().toString(36)}.gkx`;
+                setTokens((list) => [...list, { id: `token-${Date.now()}`, 应用名称: applicationName, Token字符串: token, 创建时间: "2026-07-13 16:20", 到期时间: `${expiryDate} 23:59`, 状态: "正常" }]);
+                notify("Token 生成成功");
+              } else {
+                setTokens((list) => list.map((item) => item.id === tokenEditor.tokenId ? { ...item, 应用名称: applicationName, 到期时间: `${expiryDate} 23:59` } : item));
+                notify("Token 编辑成功");
+              }
+              setTokenEditor(null);
+            }}
+          />}
         </div>
-        <DataTable columns={["调用时间", "调用方IP", "接口地址", "请求参数", "响应结果", "调用耗时", "错误信息"]} rows={apiLogRows.map((row) => ({ ...row, 响应结果: <StatusTag value={row.响应结果} /> }))} />
-      </section>
+      )}
+      {tab === "docs" && <ApiDocumentViewer notify={notify} />}
+      {tab === "logs" && <ApiLogList />}
     </div>
   );
 }
 
-function TalentPoolResources() {
+function ApiDocumentViewer({ notify }: { notify: Notify }) {
+  const categories = Object.keys(apiDocumentCatalog);
+  const [category, setCategory] = useState(categories[0]);
+  const document = apiDocumentCatalog[category][0];
   return (
-    <div className="split-page">
-      <aside className="card org-tree">
-        <CardHeader title="目录树" />
-        <div className="table-toolbar"><div><Button>新增</Button><Button>编辑</Button><Button>删除</Button></div></div>
-        <div className="tree-list">
-          <button className="active"><FolderOpen size={16} /><span>人工智能人才库</span></button>
-          <button><FolderOpen size={16} /><span>新材料人才库</span></button>
-        </div>
+    <div className="api-document-layout">
+      <aside className="api-document-nav">
+        <h3>资源分类</h3>
+        {categories.map((item) => (
+          <button type="button" className={category === item ? "active" : ""} onClick={() => setCategory(item)} key={item}>
+            <Database size={16} /><span>{item}</span><ChevronRight size={15} />
+          </button>
+        ))}
       </aside>
-      <section className="card page-card">
-        <DataTable columns={["人才库名称", "描述", "学者数量", "创建人"]} rows={talentRows} actions={() => <ActionLinks actions={["查看", "新增", "编辑", "禁用", "删除"]} />} />
-      </section>
+      <article className="api-document-content">
+        <header>
+          <div><h3>{document.name}</h3><p>{document.description}</p></div>
+          <span className={`api-method ${document.method.toLowerCase()}`}>{document.method}</span>
+        </header>
+        <div className="api-path-row"><code>{document.path}</code><button type="button" aria-label="复制请求路径" title="复制请求路径" onClick={async () => { try { await navigator.clipboard.writeText(document.path); notify("请求路径已复制"); } catch { notify("复制失败，请重试", "error"); } }}><Copy size={15} /></button></div>
+        <section>
+          <h4>参数列表</h4>
+          <div className="api-plain-table"><table><thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>{document.parameters.map((parameter) => <tr key={parameter.参数名}><td><code>{parameter.参数名}</code></td><td>{parameter.类型}</td><td>{parameter.必填}</td><td>{parameter.说明}</td></tr>)}</tbody></table></div>
+        </section>
+        <section>
+          <h4>返回 JSON 示例</h4>
+          <pre className="api-json-example"><code>{document.response}</code></pre>
+        </section>
+        <section>
+          <h4>错误码说明</h4>
+          <div className="api-plain-table"><table><thead><tr><th>错误码</th><th>说明</th></tr></thead><tbody>{document.errors.map((error) => <tr key={error.错误码}><td><code>{error.错误码}</code></td><td>{error.说明}</td></tr>)}</tbody></table></div>
+        </section>
+      </article>
     </div>
   );
 }
 
-function ReportResources() {
+function ApiLogList() {
+  const [timeRange, setTimeRange] = useState("近1小时");
+  const [result, setResult] = useState("全部");
+  const [apiName, setApiName] = useState("");
+  const [detail, setDetail] = useState<(typeof apiLogRows)[number] | null>(null);
+  const rows = apiLogRows.filter((row) => (
+    (timeRange === "近7天" || row.时间范围 === "近1小时")
+    && (result === "全部" || row.响应结果 === result)
+    && row.接口名称.includes(apiName.trim())
+  ));
   return (
-    <section className="card page-card">
-      <div className="table-toolbar"><div><Button>新增</Button></div></div>
-      <DataTable columns={["报告类型", "报告名称", "报告类型ID", "所属学科", "领域"]} rows={reportResourceRows} actions={() => <ActionLinks actions={["新增", "编辑", "删除"]} />} />
-    </section>
-  );
-}
-
-function ThinkTankResources() {
-  return (
-    <section className="card page-card">
-      <CardHeader title="智库资源" subtitle="支持其他子系统的数据维护" />
-      <div className="table-toolbar"><div><Button>新增</Button><Button>查看</Button><Button>编辑</Button><Button>删除</Button></div></div>
-    </section>
-  );
-}
-
-function PermissionConfig() {
-  return (
-    <section className="card permission-page">
-      <div className="permission-top">
-        <div><span>用户分配</span><small>普通用户 / 机构用户 / 政府用户</small></div>
-        <div><Button variant="primary">保存配置</Button></div>
+    <div className="resource-tab-content api-log-list">
+      <div className="filters api-log-filters">
+        <FilterSelect label="时间范围" options={["近1小时", "近7天"]} value={timeRange} onChange={setTimeRange} />
+        <FilterSelect label="调用结果" options={["全部", "成功", "失败"]} value={result} onChange={setResult} />
+        <FilterInput label="接口名称" placeholder="请输入" searchable value={apiName} onChange={setApiName} />
       </div>
-      <div className="permission-content">
-        <aside className="permission-menus">
-          <h3>用户分配</h3>
-          {userRows.map((user) => <button key={user.用户ID}><CircleUserRound size={17} /><span>{user.用户姓名}</span><ChevronRight size={15} /></button>)}
-        </aside>
-        <div className="permission-table">
-          <div className="data-scope">
-            <h3>用户分配</h3>
-            <div>{roleOptions.map((role) => <label key={role}><input type="checkbox" defaultChecked={role === "普通用户"} /><span><b>{role}</b></span></label>)}</div>
+      <DataTable
+        columns={["调用时间", "调用方IP", "接口地址", "响应结果", "调用耗时"]}
+        rows={rows.map((row) => ({ ...row, 响应结果: <StatusTag value={row.响应结果} /> }))}
+        actions={(row) => <ActionLinks actions={["查看"]} onAction={() => setDetail(rows.find((item) => item.调用时间 === String(row.调用时间)) ?? null)} />}
+      />
+      {detail && createPortal(
+        <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setDetail(null)}>
+          <div className="modal resource-log-modal" role="dialog" aria-modal="true" aria-label="调用详情">
+            <ModalHeader title="调用详情" subtitle={detail.接口名称} close={() => setDetail(null)} />
+            <div className="modal-form">
+              <div className="modal-form-body resource-log-detail">
+                <dl><div><dt>调用时间</dt><dd>{detail.调用时间}</dd></div><div><dt>调用方 IP</dt><dd>{detail.调用方IP}</dd></div><div><dt>接口地址</dt><dd><code>{detail.接口地址}</code></dd></div><div><dt>响应结果</dt><dd><StatusTag value={detail.响应结果} /></dd></div><div><dt>调用耗时</dt><dd>{detail.调用耗时}</dd></div><div><dt>错误信息</dt><dd>{detail.错误信息}</dd></div></dl>
+                <h3>请求参数</h3><pre><code>{detail.请求参数}</code></pre>
+              </div>
+              <div className="modal-footer"><Button onClick={() => setDetail(null)}>关闭</Button></div>
+            </div>
           </div>
-          <div className="data-scope">
-            <h3>角色分配</h3>
-            <p>页面权限</p>
-            <div>{allMenuItems.map((page) => <label key={page.key}><input type="checkbox" defaultChecked /><span><b>{page.label}</b><small>若页面管理中页面为禁用，则优先覆盖此处配置。</small></span></label>)}</div>
+        </div>,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+function BusinessResources({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
+  const [tab, setTab] = useState<BusinessResourceType>("talent");
+  return (
+    <div className="business-resource-workspace">
+      <div className="resource-subtabs" aria-label="业务资源类型">
+        {(Object.keys(businessResourceConfigs) as BusinessResourceType[]).map((type) => <button className={tab === type ? "active" : ""} onClick={() => setTab(type)} key={type}>{businessResourceConfigs[type].tab}</button>)}
+      </div>
+      <BusinessResourceWorkspace type={tab} openModal={openModal} notify={notify} key={tab} />
+    </div>
+  );
+}
+
+function DirectoryEditorModal({ mode, initialValue, close, save }: { mode: "create" | "edit"; initialValue: string; close: () => void; save: (value: string) => void }) {
+  const [value, setValue] = useState(initialValue);
+  const canSubmit = value.trim().length > 0;
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="modal directory-editor-modal" role="dialog" aria-modal="true" aria-label={mode === "create" ? "新增目录" : "编辑目录"}>
+        <ModalHeader title={mode === "create" ? "新增目录" : "编辑目录"} close={close} />
+        <form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (canSubmit) save(value.trim()); }}>
+          <div className="modal-form-body"><FormField label="目录名称" required><input value={value} placeholder="请输入目录名称" onChange={(event) => setValue(event.target.value)} /></FormField></div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function BusinessItemModal({ mode, columns, values, close, save }: { mode: "create" | "edit" | "detail"; columns: string[]; values: Record<string, string>; close: () => void; save: (values: Record<string, string>) => void }) {
+  const [formValues, setFormValues] = useState(values);
+  const title = mode === "create" ? "新增资源" : mode === "edit" ? "编辑资源" : "资源详情";
+  const canSubmit = String(formValues[columns[0]] ?? "").trim().length > 0;
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="modal business-item-modal" role="dialog" aria-modal="true" aria-label={title}>
+        <ModalHeader title={title} close={close} />
+        <form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (mode !== "detail" && canSubmit) save(formValues); }}>
+          <div className="modal-form-body business-item-form">{columns.map((column) => <FormField label={column} required={column === columns[0]} key={column}><input disabled={mode === "detail"} value={formValues[column] ?? ""} placeholder={`请输入${column}`} onChange={(event) => setFormValues((current) => ({ ...current, [column]: event.target.value }))} /></FormField>)}</div>
+          <div className="modal-footer">{mode === "detail" ? <Button onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></>}</div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function BusinessResourceWorkspace({ type, openModal, notify }: { type: BusinessResourceType; openModal: OpenModal; notify: Notify }) {
+  const config = businessResourceConfigs[type];
+  const resourceTotals = type === "talent" ? [128, 96, 74] : type === "report" ? [46, 32, 28, 20] : [18, 12, 9];
+  const [directories, setDirectories] = useState(() => config.directories.map((name, index) => ({ name, count: resourceTotals[index] ?? 0 })));
+  const [directory, setDirectory] = useState(config.directories[0]);
+  const [directoryEditor, setDirectoryEditor] = useState<"create" | "edit" | null>(null);
+  const [resourceRows, setResourceRows] = useState<Array<Record<string, string>>>(() => config.rows.map((row) => ({ ...row })));
+  const [itemEditor, setItemEditor] = useState<{ mode: "create" | "edit" | "detail"; index: number; values: Record<string, string> } | null>(null);
+  const selectedDirectory = directories.find((item) => item.name === directory) ?? directories[0];
+  const selectedTotal = String(selectedDirectory?.count ?? 0);
+  const selectedDescription = type === "talent" ? `聚合${directory}相关学者资源` : type === "report" ? `${directory}资源集合` : `${directory}数据资源集合`;
+  const rowActions = type === "report" ? ["编辑", "删除"] : ["查看", "编辑", "删除"];
+  const primaryColumn = config.columns[0];
+  const emptyValues = Object.fromEntries(config.columns.map((column) => [column, column === "关联时间" ? "2026-07-13 16:10" : ""]));
+  const saveDirectory = (name: string) => {
+    if (directories.some((item) => item.name === name && item.name !== directory)) {
+      notify("目录名称已存在", "warning");
+      return;
+    }
+    if (directoryEditor === "create") {
+      setDirectories((list) => [...list, { name, count: 0 }]);
+      setDirectory(name);
+      notify("目录新增成功");
+    } else {
+      setDirectories((list) => list.map((item) => item.name === directory ? { ...item, name } : item));
+      setDirectory(name);
+      notify("目录编辑成功");
+    }
+    setDirectoryEditor(null);
+  };
+  return (
+    <div className="business-resource-layout">
+      <aside className="business-directory">
+        <div className="business-directory-heading"><h3>{config.directoryTitle}</h3><button type="button" aria-label="新增目录" title="新增目录" onClick={() => setDirectoryEditor("create")}><Plus size={16} /></button></div>
+        <div className="tree-list business-tree-list">
+          {directories.map((item) => (
+            <button type="button" className={directory === item.name ? "active" : ""} onClick={() => setDirectory(item.name)} key={item.name}>
+              <FolderOpen size={16} /><span>{item.name}</span><b>{item.count}</b>
+            </button>
+          ))}
+        </div>
+        <div className="business-directory-actions"><button type="button" onClick={() => setDirectoryEditor("edit")}>编辑</button><button type="button" className="danger-action" disabled={directories.length <= 1} onClick={() => openModal("delete", { payload: { message: `确认删除${directory}？` }, onConfirm: () => { const remaining = directories.filter((item) => item.name !== directory); setDirectories(remaining); setDirectory(remaining[0].name); } })}>删除</button></div>
+      </aside>
+      <section className="business-resource-content">
+        <div className="business-resource-summary">
+          <div><span>{type === "talent" ? "人才库名称" : type === "report" ? "报告资源名称" : "智库资源名称"}</span><strong>{directory}</strong></div>
+          <div className="summary-description"><span>描述</span><p>{selectedDescription}</p></div>
+          <div className="summary-count"><span>{config.info.总数标签}</span><strong>{selectedTotal}</strong></div>
+          <div><span>创建人</span><strong>{config.info.创建人}</strong></div>
+        </div>
+        <div className="table-toolbar"><div><Button variant="primary" icon={Plus} onClick={() => setItemEditor({ mode: "create", index: -1, values: emptyValues })}>新增</Button></div></div>
+        <DataTable columns={config.columns} rows={resourceRows} actions={(row) => <ActionLinks actions={rowActions} onAction={(action) => {
+          const rowIndex = resourceRows.findIndex((item) => item[primaryColumn] === String(row[primaryColumn]));
+          const values = resourceRows[rowIndex] ?? emptyValues;
+          if (action === "查看") setItemEditor({ mode: "detail", index: rowIndex, values });
+          if (action === "编辑") setItemEditor({ mode: "edit", index: rowIndex, values });
+          if (action === "删除") openModal("delete", { payload: { message: `确认删除${values[primaryColumn]}？` }, onConfirm: () => setResourceRows((list) => list.filter((_, index) => index !== rowIndex)) });
+        }} />} />
+      </section>
+      {directoryEditor && <DirectoryEditorModal mode={directoryEditor} initialValue={directoryEditor === "edit" ? directory : ""} close={() => setDirectoryEditor(null)} save={saveDirectory} />}
+      {itemEditor && <BusinessItemModal mode={itemEditor.mode} columns={config.columns} values={itemEditor.values} close={() => setItemEditor(null)} save={(values) => {
+        if (itemEditor.mode === "create") setResourceRows((list) => [...list, values]);
+        else setResourceRows((list) => list.map((item, index) => index === itemEditor.index ? values : item));
+        setItemEditor(null);
+        notify(itemEditor.mode === "create" ? "新增成功" : "编辑成功");
+      }} />}
+    </div>
+  );
+}
+
+const pagePermissionGroups = [
+  { label: "系统管理", items: [{ key: "report", label: "报告管理", level: 0 }, { key: "workflow", label: "审核管理 / 流程中心", level: 0 }, { key: "form", label: "审核管理 / 表单中心", level: 1 }, { key: "audit", label: "审核管理 / 审核内容", level: 1 }, { key: "event-info", label: "埋点管理 / 埋点信息", level: 0 }, { key: "event-dashboard", label: "埋点管理 / 数据看板", level: 1 }] },
+  { label: "权限管理", items: [{ key: "user", label: "用户管理", level: 0 }, { key: "role", label: "角色管理", level: 0 }, { key: "page", label: "页面管理", level: 0 }, { key: "resource", label: "资源管理", level: 0 }, { key: "permission", label: "权限配置", level: 0 }] },
+];
+
+const resourcePermissionGroups = [
+  { label: "人才库资源", items: ["人工智能人才库", "新材料人才库", "生命科学人才库"] },
+  { label: "报告资源", items: ["TR报告", "战略咨询报告", "洞察分析报告", "未来产业报告"] },
+  { label: "智库资源", items: ["科技政策智库", "未来产业智库", "区域创新智库"] },
+];
+
+function RoleTransferModal({ user, roles, close, save }: { user: (typeof userRows)[number]; roles: string[]; close: () => void; save: (roles: string[]) => void }) {
+  const [selected, setSelected] = useState(roles);
+  const [availableChecked, setAvailableChecked] = useState<string[]>([]);
+  const [selectedChecked, setSelectedChecked] = useState<string[]>([]);
+  const available = roleOptions.filter((role) => !selected.includes(role));
+  const toggleChecked = (value: string, list: string[], setter: (next: string[]) => void) => setter(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="modal role-transfer-modal" role="dialog" aria-modal="true" aria-label="分配角色">
+        <ModalHeader title="分配角色" subtitle={`${user.用户姓名} · ${user.所属组织名称}`} close={close} />
+        <div className="modal-form">
+          <div className="modal-form-body role-transfer-body">
+            <section className="transfer-pane"><header><h3>可选角色</h3><span>{available.length}</span></header><div>{available.length ? available.map((role) => <label key={role}><input className="gkx-checkbox" type="checkbox" checked={availableChecked.includes(role)} onChange={() => toggleChecked(role, availableChecked, setAvailableChecked)} /><span>{role}</span></label>) : <p>暂无可选角色</p>}</div></section>
+            <div className="transfer-actions"><button type="button" disabled={!availableChecked.length} aria-label="添加所选角色" onClick={() => { setSelected((list) => [...list, ...availableChecked]); setAvailableChecked([]); }}><ChevronRight size={17} /></button><button type="button" disabled={!selectedChecked.length} aria-label="移除所选角色" onClick={() => { setSelected((list) => list.filter((role) => !selectedChecked.includes(role))); setSelectedChecked([]); }}><ChevronLeft size={17} /></button></div>
+            <section className="transfer-pane"><header><h3>已选角色</h3><span>{selected.length}</span></header><div>{selected.length ? selected.map((role) => <label key={role}><input className="gkx-checkbox" type="checkbox" checked={selectedChecked.includes(role)} onChange={() => toggleChecked(role, selectedChecked, setSelectedChecked)} /><span>{role}</span></label>) : <p>暂未分配角色</p>}</div></section>
           </div>
-          <div className="data-scope">
-            <h3>资源权限</h3>
-            <div>{resourcePermissionOptions.map((resource) => <label key={resource}><input type="checkbox" defaultChecked /><span><b>{resource}</b></span></label>)}</div>
-          </div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="primary" onClick={() => save(selected)}>保存</Button></div>
         </div>
       </div>
+    </div>,
+    document.body,
+  );
+}
+
+function PagePermissionTree({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
+  const toggleKeys = (keys: string[], checked: boolean) => onChange(checked ? Array.from(new Set([...selected, ...keys])) : selected.filter((key) => !keys.includes(key)));
+  return <div className="permission-checkbox-tree">{pagePermissionGroups.map((group) => {
+    const groupKeys = group.items.map((item) => item.key);
+    const allChecked = groupKeys.every((key) => selected.includes(key));
+    return <section key={group.label}><label className="permission-tree-parent"><input className="gkx-checkbox" type="checkbox" checked={allChecked} onChange={(event) => toggleKeys(groupKeys, event.target.checked)} /><span>{group.label}</span></label><div>{group.items.map((item) => <label className={`permission-tree-child level-${item.level}`} key={item.key}><input className="gkx-checkbox" type="checkbox" checked={selected.includes(item.key)} onChange={(event) => toggleKeys([item.key], event.target.checked)} /><span>{item.label}</span></label>)}</div></section>;
+  })}</div>;
+}
+
+function ResourcePermissionTree({ selected, onChange }: { selected: string[]; onChange: (next: string[]) => void }) {
+  const toggle = (key: string, checked: boolean) => onChange(checked ? Array.from(new Set([...selected, key])) : selected.filter((item) => item !== key));
+  return <div className="resource-permission-tree"><div className="resource-permission-head"><span>资源范围</span><span>可见</span><span>可维护</span></div>{resourcePermissionGroups.map((group) => <section key={group.label}><h4>{group.label}</h4>{group.items.map((item) => <div className="resource-permission-row" key={item}><span><FolderOpen size={15} />{item}</span>{["view", "edit"].map((permission) => { const key = `${group.label}/${item}/${permission}`; return <label key={key}><input className="gkx-checkbox" type="checkbox" aria-label={`${item}${permission === "view" ? "可见" : "可维护"}`} checked={selected.includes(key)} onChange={(event) => toggle(key, event.target.checked)} /></label>; })}</div>)}</section>)}</div>;
+}
+
+function PermissionConfig({ notify }: { notify: Notify }) {
+  const [tab, setTab] = useState<"users" | "roles">("users");
+  const [userKeyword, setUserKeyword] = useState("");
+  const [userRoleMap, setUserRoleMap] = useState<Record<string, string[]>>({ U20260001: ["普通用户"], U20260002: ["机构用户", "政府用户"] });
+  const [transferUser, setTransferUser] = useState<(typeof userRows)[number] | null>(null);
+  const roles = ["系统管理员", ...roleOptions];
+  const [activeRole, setActiveRole] = useState("系统管理员");
+  const [permissionTab, setPermissionTab] = useState<"pages" | "resources">("pages");
+  const [pagePermissions, setPagePermissions] = useState<Record<string, string[]>>({ 系统管理员: pagePermissionGroups.flatMap((group) => group.items.map((item) => item.key)), 普通用户: ["report", "event-dashboard"], 机构用户: ["report", "workflow", "form", "event-info"], 政府用户: ["report", "event-dashboard"] });
+  const [resourcePermissions, setResourcePermissions] = useState<Record<string, string[]>>({ 系统管理员: resourcePermissionGroups.flatMap((group) => group.items.flatMap((item) => [`${group.label}/${item}/view`, `${group.label}/${item}/edit`])), 普通用户: ["报告资源/TR报告/view"], 机构用户: ["人才库资源/人工智能人才库/view", "报告资源/TR报告/view"], 政府用户: ["智库资源/科技政策智库/view"] });
+  const filteredUsers = userRows.filter((user) => user.用户姓名.includes(userKeyword.trim()));
+  return (
+    <section className="card permission-page permission-config-page">
+      <div className="resource-tabs permission-primary-tabs" aria-label="权限配置类型"><button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>用户分配</button><button className={tab === "roles" ? "active" : ""} onClick={() => setTab("roles")}>角色权限</button></div>
+      {tab === "users" ? (
+        <div className="permission-user-list">
+          <div className="filters permission-user-filters"><FilterInput label="用户检索" placeholder="请输入" searchable value={userKeyword} onChange={setUserKeyword} /></div>
+          <DataTable columns={["用户ID", "用户姓名", "所属组织名称", "手机号", "当前角色"]} rows={filteredUsers.map((user) => ({ ...user, 当前角色: (userRoleMap[user.用户ID] ?? []).join("、") || "未分配" }))} actions={(row) => <ActionLinks actions={["分配角色"]} onAction={() => setTransferUser(userRows.find((user) => user.用户ID === row.用户ID) ?? null)} />} />
+        </div>
+      ) : (
+        <div className="role-permission-console">
+          <aside className="role-selector"><h3>角色列表</h3>{roles.map((role) => <button type="button" className={activeRole === role ? "active" : ""} onClick={() => setActiveRole(role)} key={role}><ShieldCheck size={16} /><span><b>{role}</b><small>{role === "系统管理员" ? "全部系统权限" : "自定义权限"}</small></span><ChevronRight size={15} /></button>)}</aside>
+          <section className="permission-workspace">
+            <div className="permission-workspace-header"><div><h3>{activeRole}</h3><p>配置该角色可访问的页面与业务资源范围</p></div><Button variant="primary" icon={Save} onClick={() => notify("权限配置保存成功")}>保存配置</Button></div>
+            <div className="resource-subtabs permission-workspace-tabs"><button className={permissionTab === "pages" ? "active" : ""} onClick={() => setPermissionTab("pages")}>页面权限</button><button className={permissionTab === "resources" ? "active" : ""} onClick={() => setPermissionTab("resources")}>资源权限</button></div>
+            {permissionTab === "pages" ? <><div className="permission-note"><ShieldCheck size={16} /><span>若页面管理中页面已禁用，则优先覆盖此处配置。</span></div><PagePermissionTree selected={pagePermissions[activeRole] ?? []} onChange={(next) => setPagePermissions((current) => ({ ...current, [activeRole]: next }))} /></> : <ResourcePermissionTree selected={resourcePermissions[activeRole] ?? []} onChange={(next) => setResourcePermissions((current) => ({ ...current, [activeRole]: next }))} />}
+          </section>
+        </div>
+      )}
+      {transferUser && <RoleTransferModal user={transferUser} roles={userRoleMap[transferUser.用户ID] ?? []} close={() => setTransferUser(null)} save={(nextRoles) => { setUserRoleMap((current) => ({ ...current, [transferUser.用户ID]: nextRoles })); setTransferUser(null); notify("角色分配成功"); }} />}
     </section>
   );
 }
@@ -1726,28 +2741,42 @@ function useModalValues(payload: ModalPayload, fields: readonly string[], aliase
   };
 }
 
-function Modal({ type, mode = "create", payload = {}, onConfirm, onSave, close }: { type: ModalType; mode?: ModalMode; payload?: ModalPayload; onConfirm?: () => void; onSave?: ModalSave; close: () => void }) {
+function getModalSuccessMessage(type: ModalType, mode: ModalMode) {
+  if (mode === "detail") return "";
+  if (type === "report") return mode === "edit" ? "编辑成功" : "报告上传成功";
+  if (type === "tracking") return mode === "batch" ? "批量上传成功" : mode === "edit" ? "编辑成功" : "新增成功";
+  if (type === "user") return "用户注册成功";
+  if (type === "role" || type === "page") return mode === "edit" ? "编辑成功" : "新建成功";
+  return "保存成功";
+}
+
+function Modal({ type, mode = "create", payload = {}, onConfirm, onSave, close, notify }: { type: ModalType; mode?: ModalMode; payload?: ModalPayload; onConfirm?: () => void; onSave?: ModalSave; close: () => void; notify: Notify }) {
   if (!type) return null;
+  const handleSave: ModalSave = (values) => {
+    onSave?.(values);
+    const message = getModalSuccessMessage(type, mode);
+    if (message) notify(message);
+  };
   if (type === "delete") return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal confirm-modal">
-        <button className="modal-close" onClick={close}><X size={18} /></button>
-        <div className="confirm-icon"><Trash2 size={24} /></div>
-        <h2>删除</h2>
-        <p>{payload.message}</p>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="danger" onClick={() => { onConfirm?.(); close(); }}>删除</Button></div>
+        <ModalHeader title="删除" close={close} />
+        <div className="modal-form">
+          <div className="modal-form-body"><ModalAlert tone="warning">{payload.message}</ModalAlert></div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="danger" onClick={() => { onConfirm?.(); notify("删除成功"); close(); }}>删除</Button></div>
+        </div>
       </div>
     </div>
   );
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal form-modal">
-        {type === "report" && <ReportModal close={close} payload={payload} onSave={onSave} />}
-        {type === "tracking" && mode === "batch" && <TrackingBatchModal close={close} />}
-        {type === "tracking" && mode !== "batch" && <TrackingModal close={close} mode={mode} payload={payload} onSave={onSave} />}
-        {type === "user" && <UserModal close={close} mode={mode} payload={payload} onSave={onSave} />}
-        {type === "role" && <RoleModal close={close} payload={payload} onSave={onSave} />}
-        {type === "page" && <PageModal close={close} payload={payload} onSave={onSave} />}
+        {type === "report" && <ReportModal close={close} payload={payload} onSave={handleSave} />}
+        {type === "tracking" && mode === "batch" && <TrackingBatchModal close={close} onSuccess={() => notify(getModalSuccessMessage(type, mode))} />}
+        {type === "tracking" && mode !== "batch" && <TrackingModal close={close} mode={mode} payload={payload} onSave={handleSave} />}
+        {type === "user" && <UserModal close={close} mode={mode} payload={payload} onSave={handleSave} />}
+        {type === "role" && <RoleModal close={close} payload={payload} onSave={handleSave} />}
+        {type === "page" && <PageModal close={close} payload={payload} onSave={handleSave} />}
       </div>
     </div>
   );
@@ -1778,11 +2807,11 @@ function ReportModal({ close, payload, onSave }: { close: () => void; payload: M
   );
 }
 
-function TrackingBatchModal({ close }: { close: () => void }) {
+function TrackingBatchModal({ close, onSuccess }: { close: () => void; onSuccess: () => void }) {
   return (
     <>
-      <ModalHeader title="批量上传埋点事件" close={close} />
-      <form className="modal-form" onSubmit={(event) => { event.preventDefault(); close(); }}>
+      <ModalHeader title="批量上传埋点" close={close} />
+      <form className="modal-form" onSubmit={(event) => { event.preventDefault(); onSuccess(); close(); }}>
         <div className="modal-form-body"><FileUploadField accept=".xlsx,.xls,.csv" hint="选择文件" /></div>
         <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
       </form>
@@ -1793,12 +2822,18 @@ function TrackingBatchModal({ close }: { close: () => void }) {
 function TrackingModal({ close, mode, payload, onSave }: { close: () => void; mode: Exclude<ModalMode, "batch">; payload: ModalPayload; onSave?: ModalSave }) {
   const { values, setValue } = useModalValues(payload, trackingFormFields);
   const isDetail = mode === "detail";
+  const moduleOptions = ["报告管理", "审核管理", "用户管理", "角色管理", "页面管理", "资源管理", "权限配置"];
+  const triggerOptions = ["点击", "提交", "保存", "曝光", "页面加载"];
   return (
     <>
-      <ModalHeader title={isDetail ? "查看详情" : "新增埋点事件"} close={close} />
+      <ModalHeader title={isDetail ? "查看详情" : mode === "edit" ? "修改埋点" : "新增埋点"} close={close} />
       <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          {trackingFormFields.map((field) => <FormField label={field} key={field}><input readOnly={isDetail} value={values[field]} onChange={(event) => setValue(field, event.target.value)} /></FormField>)}
+          <FormField label="事件ID"><input readOnly={isDetail} value={values.事件ID} onChange={(event) => setValue("事件ID", event.target.value)} /></FormField>
+          <FormField label="所属功能模块"><FormSelect ariaLabel="所属功能模块" options={moduleOptions} value={values.所属功能模块} disabled={isDetail} onChange={(value) => setValue("所属功能模块", value)} /></FormField>
+          <FormField label="埋点标签"><input readOnly={isDetail} value={values.埋点标签} onChange={(event) => setValue("埋点标签", event.target.value)} /></FormField>
+          <FormField label="埋点路径"><input readOnly={isDetail} value={values.埋点路径} onChange={(event) => setValue("埋点路径", event.target.value)} /></FormField>
+          <FormField label="触发机制"><FormSelect ariaLabel="触发机制" options={triggerOptions} value={values.触发机制} disabled={isDetail} onChange={(value) => setValue("触发机制", value)} /></FormField>
         </div>
         <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></>}</div>
       </form>
@@ -1895,11 +2930,12 @@ type FormSelectProps = {
   onChange?: (value: string) => void;
   placeholder?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 };
 
 type SelectMenuPosition = { left: number; top: number; width: number };
 
-function FormSelect({ id, options, defaultValue, value, onChange, placeholder = "请选择", ariaLabel }: FormSelectProps) {
+function FormSelect({ id, options, defaultValue, value, onChange, placeholder = "请选择", ariaLabel, disabled = false }: FormSelectProps) {
   const [internalSelected, setInternalSelected] = useState(defaultValue ?? options[0] ?? "");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(() => Math.max(0, options.indexOf(value ?? defaultValue ?? options[0] ?? "")));
@@ -1934,7 +2970,7 @@ function FormSelect({ id, options, defaultValue, value, onChange, placeholder = 
   }, [open]);
 
   const openMenu = () => {
-    if (!options.length) return;
+    if (disabled || !options.length) return;
     updateMenuPosition();
     setActiveIndex(Math.max(0, options.indexOf(selected)));
     setOpen(true);
@@ -1970,6 +3006,7 @@ function FormSelect({ id, options, defaultValue, value, onChange, placeholder = 
         aria-activedescendant={open ? `${menuId}-option-${activeIndex}` : undefined}
         aria-expanded={open}
         aria-haspopup="listbox"
+        disabled={disabled}
         onClick={() => {
           if (open) setOpen(false);
           else openMenu();
@@ -2184,7 +3221,7 @@ function FormField({ label, required, children }: { label: string; required?: bo
 }
 
 function ModalHeader({ title, subtitle, close }: { title: string; subtitle?: string; close: () => void }) {
-  return <header className="modal-header"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button onClick={close}><X size={20} /></button></header>;
+  return <header className="modal-header"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div><button type="button" aria-label="关闭对话框" onClick={close}><X size={20} /></button></header>;
 }
 
 function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageKey; setActive: (p: PageKey) => void; collapsed: boolean; setCollapsed: (v: boolean) => void }) {
@@ -2228,7 +3265,6 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
           </div>
         ))}
       </nav>
-      <div className="sidebar-footer"><button><Settings size={18} />{!collapsed && <span>系统设置</span>}</button></div>
     </aside>
   );
 }
@@ -2260,9 +3296,22 @@ export default function App() {
   const [active, setActive] = useState<PageKey>("report-management");
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [formWorkspaceOpen, setFormWorkspaceOpen] = useState(false);
   const [modal, setModal] = useState<{ type: ModalType; mode: ModalMode; payload: ModalPayload; onConfirm?: () => void; onSave?: ModalSave }>({ type: null, mode: "create", payload: {} });
   const [command, setCommand] = useState(false);
+  const [feedbackNotices, setFeedbackNotices] = useState<FeedbackNotice[]>([]);
+  const feedbackId = useRef(0);
+  const dismissFeedback = useCallback((id: number) => setFeedbackNotices((notices) => notices.filter((notice) => notice.id !== id)), []);
+  const notify = useCallback<Notify>((message, tone = "success") => {
+    const id = ++feedbackId.current;
+    setFeedbackNotices((notices) => [...notices.slice(-2), { id, message, tone }]);
+    window.setTimeout(() => dismissFeedback(id), tone === "warning" || tone === "error" ? 4500 : 3000);
+  }, [dismissFeedback]);
+  useEffect(() => {
+    if (active !== "form-center") setFormWorkspaceOpen(false);
+  }, [active]);
   const currentTitle = pageLabels[active];
+  const breadcrumbParent = breadcrumbParents[active];
   const openModal: OpenModal = (type, options = {}) => setModal({
     type,
     mode: options.mode ?? "create",
@@ -2272,9 +3321,9 @@ export default function App() {
   });
   const go = (key: PageKey) => { setActive(key); setMobileOpen(false); };
   const page = useMemo(() => {
-    if (active === "report-management") return <ReportManagement openModal={openModal} />;
-    if (active === "workflow-center") return <WorkflowCenter openModal={openModal} />;
-    if (active === "form-center") return <FormCenter />;
+    if (active === "report-management") return <ReportManagement openModal={openModal} notify={notify} />;
+    if (active === "workflow-center") return <WorkflowCenter openModal={openModal} notify={notify} />;
+    if (active === "form-center") return <FormCenter openModal={openModal} notify={notify} onWorkspaceChange={setFormWorkspaceOpen} />;
     if (active === "audit-content") return <AuditContent />;
     if (active === "event-info") return <EventTracking key="event-info" initialTab="info" openModal={openModal} />;
     if (active === "event-dashboard") return <EventTracking key="event-dashboard" initialTab="stats" openModal={openModal} />;
@@ -2282,8 +3331,8 @@ export default function App() {
     if (active === "user-management") return <UserManagement openModal={openModal} />;
     if (active === "role-management") return <RoleManagement openModal={openModal} onPermissionConfig={() => go("permission-config")} />;
     if (active === "page-management") return <PageManagement openModal={openModal} />;
-    if (active === "resource-management") return <ResourceManagement />;
-    return <PermissionConfig />;
+    if (active === "resource-management") return <ResourceManagement openModal={openModal} notify={notify} />;
+    return <PermissionConfig notify={notify} />;
   }, [active]);
   return (
     <div className={`app-shell ${collapsed ? "is-sidebar-collapsed" : ""}`}>
@@ -2291,12 +3340,13 @@ export default function App() {
       {mobileOpen && <button className="mobile-overlay" onClick={() => setMobileOpen(false)} aria-label="关闭导航" />}
       <TopBar collapsed={collapsed} onMenu={() => setMobileOpen(!mobileOpen)} onSearch={() => setCommand(true)} />
       <main className={collapsed ? "main collapsed" : "main"}>
-        <div className="page-heading"><p><img src="./assets/breadcrumb-home.svg" alt="" /> <span>/</span> {currentTitle}</p></div>
+        <div className="page-heading"><p><img src="./assets/breadcrumb-home.svg" alt="" /><span>/</span>{breadcrumbParent && <><span className="breadcrumb-parent">{breadcrumbParent}</span><span>/</span></>}{currentTitle}{active === "form-center" && formWorkspaceOpen && <><span>/</span>表单设计器</>}</p></div>
         <div className="page-content">
           <div className="page-body">{page}</div>
         </div>
       </main>
-      <Modal type={modal.type} mode={modal.mode} payload={modal.payload} onConfirm={modal.onConfirm} onSave={modal.onSave} close={() => setModal({ type: null, mode: "create", payload: {} })} />
+      <Modal type={modal.type} mode={modal.mode} payload={modal.payload} onConfirm={modal.onConfirm} onSave={modal.onSave} notify={notify} close={() => setModal({ type: null, mode: "create", payload: {} })} />
+      <FeedbackToasts notices={feedbackNotices} onDismiss={dismissFeedback} />
       {command && <div className="modal-backdrop command-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setCommand(false)}><div className="command-box"><label><Search size={20} /><input autoFocus placeholder="搜索菜单…" /><kbd>ESC</kbd></label><p>快速导航</p><div>{allMenuItems.map(item => <button key={item.key} onClick={() => { go(item.key); setCommand(false); }}><span><LayoutGrid size={16} />{item.label}</span><small>菜单 <ChevronRight size={14} /></small></button>)}</div></div></div>}
     </div>
   );
