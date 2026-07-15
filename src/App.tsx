@@ -25,6 +25,7 @@ import {
   LogOut,
   Menu,
   MessageSquareMore,
+  Minus,
   MoreHorizontal,
   Network,
   Pin,
@@ -566,9 +567,13 @@ const reportResourceRows = [
 
 function StatusTag({ value }: { value: string }) {
   const tone =
-    value.includes("通过") || value === "上架" || value === "启用" || value === "发布" || value === "已发布" || value === "成功" || value === "正常"
+    ["未发布", "启用", "禁用", "下架", "废弃", "已注销"].includes(value)
+      ? "neutral"
+      : value === "待审核"
+        ? "info"
+      : value.includes("通过") || value === "上架" || value === "发布" || value === "已发布" || value === "成功" || value === "正常"
       ? "success"
-      : value.includes("失败") || value.includes("驳回") || value.includes("取消展示") || value === "下架" || value === "禁用" || value === "废弃" || value === "已注销"
+      : value.includes("失败") || value.includes("驳回") || value.includes("取消展示")
         ? "danger"
         : value.includes("待")
           ? "warning"
@@ -1414,6 +1419,9 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
   const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
   const [nodesByWorkflow, setNodesByWorkflow] = useState<Record<string, WorkflowNode[]>>(() => Object.fromEntries(initialWorkflowRows.map((workflow) => [workflow.id, createWorkflowNodes(workflow.id)])));
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [canvasZoom, setCanvasZoom] = useState(100);
+  const [nodeMenuOpen, setNodeMenuOpen] = useState(false);
+  const [propertyCollapsed, setPropertyCollapsed] = useState(false);
   const selectedWorkflow = workflowList.find((workflow) => workflow.id === selectedWorkflowId) ?? null;
   const currentNodes = selectedWorkflowId ? nodesByWorkflow[selectedWorkflowId] ?? [] : [];
   const selectedNode = currentNodes.find((node) => node.id === selectedNodeId) ?? currentNodes[0] ?? null;
@@ -1423,6 +1431,9 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
     if (!nodesByWorkflow[workflowId]) setNodesByWorkflow((current) => ({ ...current, [workflowId]: nodes }));
     setSelectedWorkflowId(workflowId);
     setSelectedNodeId(nodes[0]?.id ?? null);
+    setCanvasZoom(100);
+    setNodeMenuOpen(false);
+    setPropertyCollapsed(false);
     setView("designer");
   };
 
@@ -1449,6 +1460,9 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
     setNodesByWorkflow((current) => ({ ...current, [id]: nodes }));
     setSelectedWorkflowId(id);
     setSelectedNodeId(nodes[0]?.id ?? null);
+    setCanvasZoom(100);
+    setNodeMenuOpen(false);
+    setPropertyCollapsed(false);
     setView("designer");
   };
 
@@ -1481,6 +1495,8 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
       return { ...current, [selectedWorkflowId]: next };
     });
     setSelectedNodeId(nextNode.id);
+    setNodeMenuOpen(false);
+    setPropertyCollapsed(false);
   };
 
   const updateCondition = (conditionId: string, patch: Partial<WorkflowCondition>) => {
@@ -1514,11 +1530,7 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
           onRowClick={(row) => openDesigner(String(row.id))}
           actions={(row) => (
             <ActionLinks
-              actions={["编辑", "删除", "下架", "发布"]}
-              disabledActions={row.原始发布状态 === "已发布" ? ["发布"] : ["下架"]}
-              actionTipOverrides={row.原始发布状态 === "已发布"
-                ? { 发布: "当前流程已发布" }
-                : { 下架: "当前流程尚未发布" }}
+              actions={["编辑", row.原始发布状态 === "已发布" ? "下架" : "发布", "删除"]}
               onAction={(action) => {
                 const workflowId = String(row.id);
                 if (action === "编辑") openDesigner(workflowId);
@@ -1541,57 +1553,71 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
   }
 
   return (
-    <section className="process-designer workflow-designer">
+    <section className={`process-designer workflow-designer ${propertyCollapsed ? "is-property-collapsed" : ""}`}>
       <header className="process-designer-header">
-        <div className="workflow-designer-title">
+        <div className="workflow-designer-back">
           <Button variant="text" icon={ChevronLeft} onClick={() => setView("management")}>返回</Button>
-          <strong>流程设计表单</strong>
         </div>
-        <Button variant="primary" onClick={() => {
-          if (!selectedWorkflow) return;
-          updateWorkflowStatus(selectedWorkflow.id, "已发布");
-          notify("发布成功");
-        }}>发布</Button>
+        <strong className="workflow-designer-heading">{selectedWorkflow?.流程名称 ?? "流程设计表单"}</strong>
+        <div className="workflow-designer-publish">
+          <Button onClick={() => notify("保存成功")}>保存</Button>
+          <Button variant="primary" onClick={() => {
+            if (!selectedWorkflow) return;
+            updateWorkflowStatus(selectedWorkflow.id, "已发布");
+            notify("保存并发布成功");
+          }}>保存并发布</Button>
+        </div>
       </header>
       <div className="process-designer-main">
-        <aside className="node-palette">
-          <div className="node-palette-title">流程设计器节点</div>
-          <div className="node-list">
-            {(["start", "end", "process", "cc"] as WorkflowNodeType[]).map((type) => {
-              const isDefaultNode = type === "start" || type === "end";
-              const existingNode = currentNodes.find((node) => node.type === type);
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  className={`node-card ${isDefaultNode ? "locked" : ""} ${existingNode?.id === selectedNode?.id ? "active" : ""}`}
-                  onClick={() => isDefaultNode ? setSelectedNodeId(existingNode?.id ?? null) : addNode(type)}
-                >
-                  <span className={`node-icon ${type}`}>{type === "process" ? <CircleUserRound size={16} /> : type === "cc" ? <FileText size={16} /> : <i />}</span>
-                  <span><b>{workflowNodeLabels[type]}</b>{isDefaultNode && <small>系统默认，不可删除</small>}</span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-
         <section className="designer-canvas" aria-label="流程设计表单">
-          <div className="flow-strip">
-            {currentNodes.map((node, index) => (
-              <div className="flow-node-group" key={node.id}>
-                <button className={`workflow-canvas-node ${node.type} ${selectedNode?.id === node.id ? "active" : ""}`} onClick={() => setSelectedNodeId(node.id)}>
-                  {node.type === "process" ? <CircleUserRound size={16} /> : node.type === "cc" ? <FileText size={16} /> : <i />}
-                  <span>{node.节点名称}</span>
-                </button>
-                {index < currentNodes.length - 1 && <i className="flow-connector" />}
-              </div>
-            ))}
+          <div className="designer-canvas-scroll">
+            <div className="flow-strip" style={{ transform: `scale(${canvasZoom / 100})` }}>
+              {currentNodes.map((node, index) => (
+                <div className="flow-node-group" key={node.id}>
+                  <button type="button" className={`workflow-canvas-node ${node.type} ${selectedNode?.id === node.id ? "active" : ""}`} onClick={() => { setSelectedNodeId(node.id); setPropertyCollapsed(false); }}>
+                    <span className="workflow-node-card-head">
+                      <span className={`workflow-node-card-icon ${node.type}`}>{node.type === "process" ? <CircleUserRound size={16} /> : node.type === "cc" ? <FileText size={16} /> : <i />}</span>
+                      <strong>{node.节点名称}</strong>
+                      <MoreHorizontal aria-hidden="true" size={16} />
+                    </span>
+                    <span className="workflow-node-card-meta">
+                      {node.type === "start" || node.type === "end"
+                        ? "系统默认，不可删除"
+                        : `负责人：${node.负责人.length ? node.负责人.join("、") : "待配置"}`}
+                    </span>
+                  </button>
+                  {index < currentNodes.length - 1 && <i className="flow-connector" />}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="canvas-node-toolbar" onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setNodeMenuOpen(false);
+          }}>
+            <div className="canvas-zoom-controls" aria-label="画布比例">
+              <button type="button" aria-label="缩小画布" disabled={canvasZoom <= 60} onClick={() => setCanvasZoom((value) => Math.max(60, value - 10))}><Minus size={16} /></button>
+              <span aria-live="polite">{canvasZoom}%</span>
+              <button type="button" aria-label="放大画布" disabled={canvasZoom >= 140} onClick={() => setCanvasZoom((value) => Math.min(140, value + 10))}><Plus size={16} /></button>
+            </div>
+            <span className="toolbar-divider" aria-hidden="true" />
+            <div className="canvas-add-node">
+              <button type="button" className="canvas-add-node-trigger" aria-haspopup="menu" aria-expanded={nodeMenuOpen} onClick={() => setNodeMenuOpen((open) => !open)}><Plus size={16} />添加节点<ChevronDown size={14} /></button>
+              {nodeMenuOpen && (
+                <div className="canvas-node-menu" role="menu" aria-label="选择节点类型">
+                  <button type="button" role="menuitem" onClick={() => addNode("process")}><CircleUserRound size={16} /><span><b>流程节点</b><small>配置负责人及流转条件</small></span></button>
+                  <button type="button" role="menuitem" onClick={() => addNode("cc")}><FileText size={16} /><span><b>抄送节点</b><small>将流程信息抄送给负责人</small></span></button>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
-        <aside className="node-property">
-          <div className="node-property-title">节点配置表单</div>
-          {selectedNode && (
+        <aside className={`node-property ${propertyCollapsed ? "is-collapsed" : ""}`}>
+          <div className="node-property-title">
+            <span>{propertyCollapsed ? "节点配置" : "节点配置表单"}</span>
+            <button type="button" aria-label={propertyCollapsed ? "展开节点配置" : "收起节点配置"} onClick={() => setPropertyCollapsed((collapsed) => !collapsed)}>{propertyCollapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}</button>
+          </div>
+          {!propertyCollapsed && selectedNode && (
             <div className="node-property-body">
               <label className="designer-field"><span>节点名称</span><input type="text" value={selectedNode.节点名称} onChange={(event) => updateNode(selectedNode.id, { 节点名称: event.target.value })} /></label>
               <div className="designer-field"><span>负责人</span><FormMultiSelect ariaLabel="负责人" options={roleOptions} value={selectedNode.负责人} onChange={(负责人) => updateNode(selectedNode.id, { 负责人 })} /></div>
@@ -1612,9 +1638,9 @@ function WorkflowCenter({ openModal, notify }: { openModal: OpenModal; notify: N
                 <h3>按条件流转</h3>
                 {selectedNode.流转条件.map((condition) => (
                   <div className="condition-row" key={condition.id}>
-                    <input type="text" value={condition.field} onChange={(event) => updateCondition(condition.id, { field: event.target.value })} />
+                    <input type="text" aria-label="流转条件字段" placeholder="字段名称" value={condition.field} onChange={(event) => updateCondition(condition.id, { field: event.target.value })} />
                     <FormSelect ariaLabel="流转条件运算符" options={["包含", "等于"]} value={condition.operator} onChange={(operator) => updateCondition(condition.id, { operator: operator as WorkflowCondition["operator"] })} />
-                    <input type="text" value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
+                    <input type="text" aria-label="流转条件值" placeholder="条件值" value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
                     <button type="button" className="delete-condition" onClick={() => removeCondition(condition.id)} aria-label="删除"><Trash2 size={16} /></button>
                   </div>
                 ))}
@@ -2911,7 +2937,7 @@ function PageManagement({ openModal, notify }: { openModal: OpenModal; notify: N
       <div className="table-toolbar page-menu-toolbar"><div><Button variant="primary" icon={Plus} onClick={() => setEditor({ mode: "create-root", parentId: "" })}>新建一级页面</Button></div></div>
       <div className={`table-wrap page-tree-grid-wrap ${scrollState.hasOverflow ? "is-scrollable" : ""} ${scrollState.showLeftShadow ? "has-left-shadow" : ""} ${scrollState.showRightShadow ? "has-right-shadow" : ""}`} ref={tableWrapRef} onScroll={updateScrollState}>
         <table className="page-tree-grid">
-          <colgroup><col style={{ width: 260 }} /><col style={{ width: 260 }} /><col style={{ width: 160 }} /><col style={{ width: 112 }} /><col style={{ width: pageActionColumnWidth }} /></colgroup>
+          <colgroup><col /><col /><col style={{ width: 160 }} /><col style={{ width: 112 }} /><col style={{ width: pageActionColumnWidth }} /></colgroup>
           <thead><tr><th>菜单/页面标题</th><th>路由地址(URL)</th><th>父级页面</th><th>启用状态</th><th className="table-action-cell table-sticky-right" style={{ width: pageActionColumnWidth, minWidth: pageActionColumnWidth, maxWidth: pageActionColumnWidth }}>操作</th></tr></thead>
           <tbody>{visibleRows.map(({ node, depth, parentId, parentTitle }) => {
             const hasChildren = Boolean(node.children?.length);
