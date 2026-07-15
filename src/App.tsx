@@ -161,6 +161,27 @@ const breadcrumbParents: Partial<Record<PageKey, string>> = {
   "audit-content": "审核管理",
   "event-info": "埋点管理",
   "event-dashboard": "埋点管理",
+};
+
+const breadcrumbParentTargets: Partial<Record<PageKey, PageKey>> = {
+  "workflow-center": "workflow-center",
+  "form-center": "workflow-center",
+  "audit-content": "workflow-center",
+  "event-info": "event-info",
+  "event-dashboard": "event-info",
+};
+
+const breadcrumbSections: Record<PageKey, "系统管理" | "权限管理"> = {
+  "report-management": "系统管理",
+  "workflow-center": "系统管理",
+  "form-center": "系统管理",
+  "audit-content": "系统管理",
+  "event-info": "系统管理",
+  "event-dashboard": "系统管理",
+  "org-management": "权限管理",
+  "user-management": "权限管理",
+  "role-management": "权限管理",
+  "page-management": "权限管理",
   "resource-management": "权限管理",
   "permission-config": "权限管理",
 };
@@ -184,18 +205,62 @@ const initialWorkflowRows = [
 ];
 
 const commentRows = [
-  { 评论内容: "门户论文评论内容", 渠道: "门户论文", 状态: "待审核" },
-  { 评论内容: "社区评论内容", 渠道: "社区评论", 状态: "审核通过" },
+  { 用户名: "李安", 评论内容: "这篇论文对人工智能发展趋势的分析很有参考价值。", 审核渠道: "门户论文", 提交时间: "2026-07-13 10:24", 状态: "待审核", 驳回意见: "" },
+  { 用户名: "王宁", 评论内容: "希望社区后续可以增加更多智能制造案例。", 审核渠道: "社区评论", 提交时间: "2026-07-13 09:48", 状态: "待审核", 驳回意见: "" },
 ];
 
 const scholarRows = [
-  { 学者姓名: "张明远", 机构: "中国科学院", 职称: "研究员", 手机号: "13800000001" },
-  { 学者姓名: "陈思敏", 机构: "北京大学", 职称: "教授", 手机号: "13800000002" },
+  {
+    学者姓名: "张明远",
+    机构: "中国科学院",
+    职称: "研究员",
+    手机号: "13800000001",
+    申请资料: [
+      { 材料名称: "身份证明", 文件名称: "张明远_身份证明.pdf", 上传时间: "2026-07-12 09:18" },
+      { 材料名称: "机构任职证明", 文件名称: "中国科学院任职证明.pdf", 上传时间: "2026-07-12 09:20" },
+      { 材料名称: "职称证明", 文件名称: "研究员职称证明.pdf", 上传时间: "2026-07-12 09:21" },
+      { 材料名称: "学术成果材料", 文件名称: "代表性学术成果汇总.pdf", 上传时间: "2026-07-12 09:25" },
+    ],
+    状态: "待审核",
+  },
+  {
+    学者姓名: "陈思敏",
+    机构: "北京大学",
+    职称: "教授",
+    手机号: "13800000002",
+    申请资料: [
+      { 材料名称: "身份证明", 文件名称: "陈思敏_身份证明.pdf", 上传时间: "2026-07-11 15:06" },
+      { 材料名称: "机构任职证明", 文件名称: "北京大学任职证明.pdf", 上传时间: "2026-07-11 15:08" },
+      { 材料名称: "职称证明", 文件名称: "教授职称证明.pdf", 上传时间: "2026-07-11 15:09" },
+      { 材料名称: "学术成果材料", 文件名称: "代表性学术成果汇总.pdf", 上传时间: "2026-07-11 15:12" },
+    ],
+    状态: "待审核",
+  },
 ];
 
 const auditReportRows = [
-  { 报告信息: "TR报告：人工智能", 提交人: "张明远" },
-  { 报告信息: "未来产业报告：智能制造", 提交人: "陈思敏" },
+  {
+    报告名称: "TR报告：人工智能",
+    报告类型: "TR报告",
+    摘要预览: "围绕人工智能技术演进、应用进展与发展趋势开展系统分析。",
+    提交人: "张明远",
+    报告稿: [
+      { 标题: "一、研究背景", 内容: "人工智能正在从单点算法能力向多模态理解、复杂推理与智能体协同方向演进。报告围绕技术体系、产业应用和治理需求，对当前发展阶段进行梳理。" },
+      { 标题: "二、技术与应用进展", 内容: "基础模型能力持续提升，数据、算力、模型和工程平台形成协同体系。人工智能已在科研辅助、工业质检、知识服务和公共服务等场景中形成可验证的应用路径。" },
+      { 标题: "三、趋势研判", 内容: "未来需要重点关注模型可靠性、专业数据供给、推理成本和安全治理。建议持续建设高质量领域数据集，完善评测机制，并推动技术能力与真实业务流程深度结合。" },
+    ],
+  },
+  {
+    报告名称: "未来产业报告：智能制造",
+    报告类型: "未来产业报告",
+    摘要预览: "分析智能制造关键技术、典型应用与产业发展路径。",
+    提交人: "陈思敏",
+    报告稿: [
+      { 标题: "一、产业背景", 内容: "制造业数字化转型正由设备联网向生产过程优化和全链路协同延伸。智能制造通过工业软件、智能装备和数据平台联动，提升生产系统的感知、分析与决策能力。" },
+      { 标题: "二、重点方向", 内容: "柔性生产、数字孪生、智能检测和预测性维护是当前重点应用方向。企业正在通过统一数据底座连接研发、生产、质量和供应链环节，形成可持续优化的生产闭环。" },
+      { 标题: "三、发展建议", 内容: "建议加强工业数据标准与接口体系建设，推动关键工业软件和核心装备协同创新，并以可量化的质量、效率和能耗指标评估智能化改造效果。" },
+    ],
+  },
 ];
 
 const trackingRows = [
@@ -270,15 +335,44 @@ const eventDashboardData: Record<TimeInterval, DashboardData> = {
   },
 };
 
-const orgRows = [
-  { 组织姓名: "国科信", 父组织名称: "-" },
-  { 组织姓名: "研究中心", 父组织名称: "国科信" },
-  { 组织姓名: "战略咨询组", 父组织名称: "研究中心" },
+type OrganizationNode = {
+  id: string;
+  label: string;
+  children?: OrganizationNode[];
+};
+
+const initialOrganizationTree: OrganizationNode[] = [
+  {
+    id: "gkx",
+    label: "国科信",
+    children: [
+      {
+        id: "research-center",
+        label: "研究中心",
+        children: [
+          { id: "ai-research", label: "人工智能研究部" },
+          { id: "smart-manufacturing", label: "智能制造研究部" },
+          { id: "strategy-group", label: "战略咨询组" },
+        ],
+      },
+      {
+        id: "operation-center",
+        label: "运营中心",
+        children: [
+          { id: "data-operation", label: "数据运营部" },
+          { id: "portal-operation", label: "门户运营部" },
+        ],
+      },
+    ],
+  },
 ];
 
 const userRows = [
   { 用户ID: "U20260001", 用户姓名: "张明远", 所属组织名称: "研究中心", 手机号: "13800000001", 邮箱: "zhangmingyuan@gkx.cn", 创建时间: "2026-07-01", 账号状态: "启用" },
   { 用户ID: "U20260002", 用户姓名: "陈思敏", 所属组织名称: "战略咨询组", 手机号: "13800000002", 邮箱: "chensimin@gkx.cn", 创建时间: "2026-07-03", 账号状态: "禁用" },
+  { 用户ID: "U20260003", 用户姓名: "王若琳", 所属组织名称: "人工智能研究部", 手机号: "13800000003", 邮箱: "wangruolin@gkx.cn", 创建时间: "2026-07-05", 账号状态: "启用" },
+  { 用户ID: "U20260004", 用户姓名: "李致远", 所属组织名称: "智能制造研究部", 手机号: "13800000004", 邮箱: "lizhiyuan@gkx.cn", 创建时间: "2026-07-07", 账号状态: "启用" },
+  { 用户ID: "U20260005", 用户姓名: "周岚", 所属组织名称: "数据运营部", 手机号: "13800000005", 邮箱: "zhoulan@gkx.cn", 创建时间: "2026-07-09", 账号状态: "禁用" },
 ];
 
 const roleRows = [
@@ -287,10 +381,49 @@ const roleRows = [
   { 角色ID: "R003", 角色名称: "政府用户", 角色描述: "政府用户", 状态: "废弃", 创建人: "系统管理员", 创建时间: "2026-07-03", 最近修改人: "系统管理员", 最近修改时间: "2026-07-06" },
 ];
 
-const pageRows = [
-  { 一级页面: "系统管理", 二级页面: "报告管理", 三级页面: "-", "地址(URL)": "/report-management", 启用属性: "启用" },
-  { 一级页面: "审核管理", 二级页面: "流程中心", 三级页面: "-", "地址(URL)": "/workflow-center", 启用属性: "启用" },
-  { 一级页面: "权限管理", 二级页面: "资源管理", 三级页面: "接口资源管理", "地址(URL)": "/resource-management/api", 启用属性: "启用" },
+type PageMenuNode = {
+  id: string;
+  title: string;
+  url: string;
+  enabled: "启用" | "禁用";
+  children?: PageMenuNode[];
+};
+
+const initialPageMenuTree: PageMenuNode[] = [
+  {
+    id: "system-menu",
+    title: "系统管理",
+    url: "/system-management",
+    enabled: "启用",
+    children: [
+      { id: "report-page", title: "报告管理", url: "/report-management", enabled: "启用" },
+      {
+        id: "audit-menu",
+        title: "审核管理",
+        url: "/audit-management",
+        enabled: "启用",
+        children: [
+          { id: "workflow-page", title: "流程中心", url: "/workflow-center", enabled: "启用" },
+          { id: "form-page", title: "表单中心", url: "/form-center", enabled: "启用" },
+          { id: "audit-content-page", title: "审核内容", url: "/audit-content", enabled: "启用" },
+        ],
+      },
+      { id: "tracking-page", title: "埋点管理", url: "/event-tracking", enabled: "启用" },
+    ],
+  },
+  {
+    id: "permission-menu",
+    title: "权限管理",
+    url: "/permission-management",
+    enabled: "启用",
+    children: [
+      { id: "user-page", title: "用户管理", url: "/user-management", enabled: "启用" },
+      { id: "role-page", title: "角色管理", url: "/role-management", enabled: "启用" },
+      { id: "page-page", title: "页面管理", url: "/page-management", enabled: "启用" },
+      { id: "resource-page", title: "资源管理", url: "/resource-management", enabled: "启用" },
+      { id: "permission-page", title: "权限配置", url: "/permission-config", enabled: "禁用" },
+    ],
+  },
 ];
 
 const apiLogRows = [
@@ -385,6 +518,7 @@ const businessResourceConfigs = {
     directories: ["人工智能人才库", "新材料人才库", "生命科学人才库"],
     info: { 名称: "人工智能人才库", 描述: "聚合人工智能领域重点学者资源", 总数标签: "学者总数", 总数: "128", 创建人: "系统管理员" },
     columns: ["学者名称", "所属学科", "职称", "关联时间"],
+    requiredColumns: ["学者名称", "所属学科", "职称"],
     rows: [
       { 学者名称: "张明远", 所属学科: "计算机科学", 职称: "研究员", 关联时间: "2026-07-08 10:20" },
       { 学者名称: "陈思敏", 所属学科: "人工智能", 职称: "教授", 关联时间: "2026-07-06 14:35" },
@@ -397,6 +531,7 @@ const businessResourceConfigs = {
     directories: ["TR报告", "战略咨询报告", "洞察分析报告", "未来产业报告"],
     info: { 名称: "TR报告", 描述: "技术研究类报告资源集合", 总数标签: "报告总数", 总数: "46", 创建人: "系统管理员" },
     columns: ["报告名称", "报告类型ID", "所属学科", "领域", "关联时间"],
+    requiredColumns: ["报告名称", "报告类型ID", "所属学科", "领域"],
     rows: [
       { 报告名称: "TR报告：人工智能", 报告类型ID: "TR001", 所属学科: "计算机科学", 领域: "人工智能", 关联时间: "2026-07-08 10:20" },
       { 报告名称: "TR报告：量子计算", 报告类型ID: "TR002", 所属学科: "物理学", 领域: "量子科技", 关联时间: "2026-07-05 16:42" },
@@ -408,6 +543,7 @@ const businessResourceConfigs = {
     directories: ["科技政策智库", "未来产业智库", "区域创新智库"],
     info: { 名称: "科技政策智库", 描述: "科技政策研究与决策咨询资源集合", 总数标签: "智库总数", 总数: "18", 创建人: "系统管理员" },
     columns: ["智库名称", "所属领域", "创建人", "关联时间"],
+    requiredColumns: ["智库名称", "所属领域"],
     rows: [
       { 智库名称: "国家科技战略研究中心", 所属领域: "科技政策", 创建人: "系统管理员", 关联时间: "2026-07-02 11:18" },
       { 智库名称: "未来产业研究院", 所属领域: "未来产业", 创建人: "系统管理员", 关联时间: "2026-06-28 09:46" },
@@ -419,6 +555,7 @@ const businessResourceConfigs = {
   directories: string[];
   info: { 名称: string; 描述: string; 总数标签: string; 总数: string; 创建人: string };
   columns: string[];
+  requiredColumns: string[];
   rows: Array<Record<string, string>>;
 }>;
 
@@ -431,7 +568,7 @@ function StatusTag({ value }: { value: string }) {
   const tone =
     value.includes("通过") || value === "上架" || value === "启用" || value === "发布" || value === "已发布" || value === "成功" || value === "正常"
       ? "success"
-      : value.includes("失败") || value === "下架" || value === "禁用" || value === "废弃" || value === "已注销"
+      : value.includes("失败") || value.includes("驳回") || value.includes("取消展示") || value === "下架" || value === "禁用" || value === "废弃" || value === "已注销"
         ? "danger"
         : value.includes("待")
           ? "warning"
@@ -515,7 +652,10 @@ const compactActionLabels: Record<string, string> = {
   "报告删除": "删除",
   "信息修改": "编辑",
   "查看详情": "查看",
+  "查看资料": "查看",
   "权限配置": "配置",
+  "新建子页面": "新增子页",
+  "修改页面属性": "修改",
   "审核通过": "通过",
   "审核驳回": "驳回",
   "审核失败/取消展示": "取消展示",
@@ -917,14 +1057,18 @@ function TableCellContent({
   const text = getTableText(value);
   const shouldTruncate = Boolean(!showFullText && text && Array.from(text).length > 16);
   if (!shouldTruncate || !text) return <>{value}</>;
+  const displayText = `${Array.from(text).slice(0, 16).join("")}…`;
   return (
     <span
       className="table-cell-text is-truncated"
       title={text}
+      tabIndex={0}
       onMouseEnter={(event) => onShowTooltip(text, event.currentTarget)}
       onMouseLeave={onHideTooltip}
+      onFocus={(event) => onShowTooltip(text, event.currentTarget)}
+      onBlur={onHideTooltip}
     >
-      {text}
+      {displayText}
     </span>
   );
 }
@@ -938,6 +1082,8 @@ function DataTable<T extends Record<string, ReactNode>>({
   activeRowKey,
   fullTextColumns = [],
   selectable = false,
+  batchActions,
+  actionWidth,
 }: {
   columns: string[];
   rows: T[];
@@ -947,6 +1093,8 @@ function DataTable<T extends Record<string, ReactNode>>({
   activeRowKey?: string | number | null;
   fullTextColumns?: string[];
   selectable?: boolean;
+  batchActions?: (selectedRows: T[], clearSelection: () => void) => ReactNode;
+  actionWidth?: number;
 }) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -965,8 +1113,9 @@ function DataTable<T extends Record<string, ReactNode>>({
   const someVisibleRowsSelected = visibleRowIndexes.some((index) => selectedRows.has(index));
   const columnWidths = columns.map((column) => getColumnWidth(column, rows, fullTextColumns.includes(column)));
   const actionRows = actions ? rows.map((row) => getActionItems(actions(row))) : [];
-  const actionColumnWidth = actions ? getActionColumnWidth(actionRows) : 0;
+  const actionColumnWidth = actions ? Math.max(actionWidth ?? 0, getActionColumnWidth(actionRows)) : 0;
   const selectedActionRows = Array.from(selectedRows, (rowIndex) => actionRows[rowIndex]).filter((actionItems): actionItems is TableAction[] => Boolean(actionItems));
+  const selectedDataRows = Array.from(selectedRows, (rowIndex) => rows[rowIndex]).filter((row): row is T => Boolean(row));
   const canBatchDelete = selectedActionRows.length > 0 && selectedActionRows.every((actionItems) => actionItems.some((action) => action.label.includes("删除") && !action.isDisabled));
   const contentColumnsWidth = columnWidths.reduce((total, width) => total + width, 0);
   const fixedColumnsWidth = (selectable ? 52 : 0) + actionColumnWidth;
@@ -1106,6 +1255,7 @@ function DataTable<T extends Record<string, ReactNode>>({
         <div className="table-bottom-bar batch-selection-bar">
           <div className="batch-selection-actions">
             <span>已选 {selectedRows.size} 条</span>
+            {batchActions?.(selectedDataRows, () => setSelectedRows(new Set()))}
             {canBatchDelete && <button type="button" className="danger-action">批量删除</button>}
             <button type="button" onClick={() => setSelectedRows(new Set())}>取消选择</button>
           </div>
@@ -1869,8 +2019,13 @@ function AuditContent() {
   const [comments, setComments] = useState(commentRows);
   const [scholars, setScholars] = useState(scholarRows);
   const [reports, setReports] = useState(auditReportRows);
+  const [selectedScholar, setSelectedScholar] = useState<(typeof scholarRows)[number] | null>(null);
+  const [selectedScholarMaterial, setSelectedScholarMaterial] = useState<(typeof scholarRows)[number]["申请资料"][number] | null>(null);
+  const [selectedReport, setSelectedReport] = useState<(typeof auditReportRows)[number] | null>(null);
+  const [rejectingComment, setRejectingComment] = useState<(typeof commentRows)[number] | null>(null);
+  const [rejectOpinion, setRejectOpinion] = useState("");
   return (
-    <section className="card page-card">
+    <section className="card page-card audit-content-page">
       <div className="subtabs">
         <button className={tab === "comments" ? "active" : ""} onClick={() => setTab("comments")}>评论审核</button>
         <button className={tab === "scholars" ? "active" : ""} onClick={() => setTab("scholars")}>认证学者审核</button>
@@ -1878,15 +2033,37 @@ function AuditContent() {
       </div>
       {tab === "comments" && (
         <DataTable
-          columns={["评论内容", "渠道", "状态"]}
+          columns={["用户名", "评论内容", "审核渠道", "提交时间", "状态"]}
           rows={comments.map((row) => ({ ...row, 原始评论内容: row.评论内容, 状态: <StatusTag value={row.状态} /> }))}
+          selectable
+          batchActions={(selectedRows, clearSelection) => (
+            <button
+              type="button"
+              onClick={() => {
+                const selectedComments = new Set(selectedRows.map((row) => String(row.原始评论内容)));
+                setComments((list) => list.map((item) => (
+                  selectedComments.has(item.评论内容) ? { ...item, 状态: "审核通过" } : item
+                )));
+                clearSelection();
+              }}
+            >
+              批量通过
+            </button>
+          )}
           actions={(row) => (
             <ActionLinks
-              actions={["审核通过", "审核失败/取消展示"]}
+              actions={["审核通过", "审核驳回"]}
+              disabledActions={String(comments.find((item) => item.评论内容 === String(row.原始评论内容))?.状态) === "待审核" ? [] : ["审核通过", "审核驳回"]}
               onAction={(action) => {
-                const comment = String(row.原始评论内容);
+                const comment = comments.find((item) => item.评论内容 === String(row.原始评论内容));
+                if (!comment) return;
+                if (action === "审核驳回") {
+                  setRejectingComment(comment);
+                  setRejectOpinion("");
+                  return;
+                }
                 setComments((list) => list.map((item) => (
-                  item.评论内容 === comment ? { ...item, 状态: action === "审核通过" ? "审核通过" : "审核失败" } : item
+                  item.评论内容 === comment.评论内容 ? { ...item, 状态: "审核通过" } : item
                 )));
               }}
             />
@@ -1895,30 +2072,216 @@ function AuditContent() {
       )}
       {tab === "scholars" && (
         <DataTable
-          columns={["学者姓名", "机构", "职称", "手机号"]}
-          rows={scholars}
-          actions={(row) => <ActionLinks actions={["审核通过", "审核驳回"]} onAction={() => setScholars((list) => list.filter((item) => item.学者姓名 !== String(row.学者姓名)))} />}
+          columns={["学者姓名", "机构", "职称", "手机号", "申请资料", "状态"]}
+          rows={scholars.map((scholar) => ({
+            学者姓名: scholar.学者姓名,
+            机构: scholar.机构,
+            职称: scholar.职称,
+            手机号: scholar.手机号,
+            申请资料: `${scholar.申请资料.length} 项材料`,
+            状态: <StatusTag value={scholar.状态} />,
+          }))}
+          actions={(row) => (
+            <ActionLinks
+              actions={["查看资料", "审核通过", "审核驳回"]}
+              disabledActions={String(scholars.find((item) => item.学者姓名 === String(row.学者姓名))?.状态) === "待审核" ? [] : ["审核通过", "审核驳回"]}
+              onAction={(action) => {
+                const scholar = scholars.find((item) => item.学者姓名 === String(row.学者姓名));
+                if (!scholar) return;
+                if (action === "查看资料") {
+                  setSelectedScholar(scholar);
+                  setSelectedScholarMaterial(null);
+                  return;
+                }
+                setScholars((list) => list.map((item) => (
+                  item.学者姓名 === scholar.学者姓名
+                    ? { ...item, 状态: action === "审核通过" ? "审核通过" : "审核驳回" }
+                    : item
+                )));
+              }}
+            />
+          )}
         />
       )}
       {tab === "reports" && (
         <DataTable
-          columns={["报告信息", "提交人"]}
-          rows={reports}
-          actions={(row) => <ActionLinks actions={["审核通过", "审核驳回"]} onAction={() => setReports((list) => list.filter((item) => item.报告信息 !== String(row.报告信息)))} />}
+          columns={["报告名称", "报告类型", "摘要预览", "提交人"]}
+          rows={reports.map(({ 报告名称, 报告类型, 摘要预览, 提交人 }) => ({ 报告名称, 报告类型, 摘要预览, 提交人 }))}
+          actions={(row) => (
+            <ActionLinks
+              actions={["查看详情", "审核通过", "审核驳回"]}
+              onAction={(action) => {
+                const report = reports.find((item) => item.报告名称 === String(row.报告名称));
+                if (!report) return;
+                if (action === "查看详情") {
+                  setSelectedReport(report);
+                  return;
+                }
+                setReports((list) => list.filter((item) => item.报告名称 !== report.报告名称));
+              }}
+            />
+          )}
         />
+      )}
+      {selectedReport && createPortal(
+        <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setSelectedReport(null)}>
+          <div className="modal audit-report-detail-modal" role="dialog" aria-modal="true" aria-label="报告详情">
+            <ModalHeader title="报告详情" close={() => setSelectedReport(null)} />
+            <div className="modal-form">
+              <div className="modal-form-body audit-report-detail">
+                <dl>
+                  <div><dt>报告名称</dt><dd>{selectedReport.报告名称}</dd></div>
+                  <div><dt>报告类型</dt><dd>{selectedReport.报告类型}</dd></div>
+                  <div className="audit-report-summary"><dt>摘要预览</dt><dd>{selectedReport.摘要预览}</dd></div>
+                  <div><dt>提交人</dt><dd>{selectedReport.提交人}</dd></div>
+                </dl>
+                <article className="audit-report-manuscript">
+                  <div className="audit-report-manuscript-heading">
+                    <span>报告稿</span>
+                    <h3>{selectedReport.报告名称}</h3>
+                  </div>
+                  {selectedReport.报告稿.map((section) => (
+                    <section key={section.标题}>
+                      <h4>{section.标题}</h4>
+                      <p>{section.内容}</p>
+                    </section>
+                  ))}
+                </article>
+              </div>
+              <div className="modal-footer"><Button onClick={() => setSelectedReport(null)}>关闭</Button></div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {selectedScholar && createPortal(
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            setSelectedScholar(null);
+            setSelectedScholarMaterial(null);
+          }}
+        >
+          <div className="modal scholar-material-modal" role="dialog" aria-modal="true" aria-label="学者认证资料">
+            <ModalHeader
+              title="学者认证资料"
+              close={() => {
+                setSelectedScholar(null);
+                setSelectedScholarMaterial(null);
+              }}
+            />
+            <div className="modal-form">
+              <div className="modal-form-body scholar-material-detail">
+                <dl className="scholar-material-profile">
+                  <div><dt>学者姓名</dt><dd>{selectedScholar.学者姓名}</dd></div>
+                  <div><dt>机构</dt><dd>{selectedScholar.机构}</dd></div>
+                  <div><dt>职称</dt><dd>{selectedScholar.职称}</dd></div>
+                  <div><dt>手机号</dt><dd>{selectedScholar.手机号}</dd></div>
+                </dl>
+                <section className="scholar-material-section">
+                  <div className="scholar-material-section-title">
+                    <h3>申请资料</h3>
+                    <span>共 {selectedScholar.申请资料.length} 项</span>
+                  </div>
+                  <div className="scholar-material-list" role="list">
+                    {selectedScholar.申请资料.map((material) => (
+                      <div className="scholar-material-item" role="listitem" key={material.材料名称}>
+                        <span className="scholar-material-icon"><FileText size={18} /></span>
+                        <div className="scholar-material-file">
+                          <strong>{material.材料名称}</strong>
+                          <span>{material.文件名称}</span>
+                        </div>
+                        <time>{material.上传时间}</time>
+                        <button type="button" className="table-detail-link" onClick={() => setSelectedScholarMaterial(material)}>查看</button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+                {selectedScholarMaterial && (
+                  <section className="scholar-material-preview" aria-label="资料预览">
+                    <div>
+                      <span>资料预览</span>
+                      <strong>{selectedScholarMaterial.材料名称}</strong>
+                    </div>
+                    <div className="scholar-material-preview-page">
+                      <FileText size={28} />
+                      <b>{selectedScholarMaterial.文件名称}</b>
+                      <span>已提交的认证资料文件</span>
+                    </div>
+                  </section>
+                )}
+              </div>
+              <div className="modal-footer"><Button onClick={() => { setSelectedScholar(null); setSelectedScholarMaterial(null); }}>关闭</Button></div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+      {rejectingComment && createPortal(
+        <div
+          className="modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target !== event.currentTarget) return;
+            setRejectingComment(null);
+            setRejectOpinion("");
+          }}
+        >
+          <div className="modal comment-reject-modal" role="dialog" aria-modal="true" aria-label="审核驳回">
+            <ModalHeader
+              title="审核驳回"
+              close={() => {
+                setRejectingComment(null);
+                setRejectOpinion("");
+              }}
+            />
+            <div className="modal-form">
+              <div className="modal-form-body">
+                <ModalAlert tone="warning">驳回后该评论将不予展示，请填写驳回意见。</ModalAlert>
+                <FormField label="驳回意见" required>
+                  <textarea value={rejectOpinion} placeholder="请输入驳回意见" onChange={(event) => setRejectOpinion(event.target.value)} />
+                </FormField>
+              </div>
+              <div className="modal-footer">
+                <Button onClick={() => { setRejectingComment(null); setRejectOpinion(""); }}>取消</Button>
+                <Button
+                  variant="primary"
+                  disabled={!rejectOpinion.trim()}
+                  onClick={() => {
+                    const opinion = rejectOpinion.trim();
+                    if (!opinion) return;
+                    setComments((list) => list.map((item) => (
+                      item.评论内容 === rejectingComment.评论内容
+                        ? { ...item, 状态: "审核驳回", 驳回意见: opinion }
+                        : item
+                    )));
+                    setRejectingComment(null);
+                    setRejectOpinion("");
+                  }}
+                >
+                  确定
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
       )}
     </section>
   );
 }
 
-function DashboardMetric({ label, value, trend, direction, icon: Icon }: { label: string; value: string; trend: string; direction: "up" | "down"; icon: LucideIcon }) {
+function DashboardMetric({ label, value, trend, direction, iconSrc }: { label: string; value: string; trend: string; direction: "up" | "down"; iconSrc: string }) {
+  const compactTrend = trend.match(/[+-]?\d+(?:\.\d+)?%/)?.[0] ?? trend;
   return (
     <article className="dashboard-metric">
-      <div className="dashboard-metric-icon"><Icon size={20} /></div>
-      <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
-        <small className={direction}>{direction === "up" ? <ArrowUp size={13} /> : <ArrowDown size={13} />}{trend}</small>
+      <div className="dashboard-metric-icon"><img src={iconSrc} alt="" aria-hidden="true" /></div>
+      <div className="dashboard-metric-content">
+        <span className="dashboard-metric-label">{label}</span>
+        <div className="dashboard-metric-value-row">
+          <strong>{value}</strong>
+          <small className={direction} aria-label={trend} title={trend}>{direction === "up" ? <ArrowUp size={15} /> : <ArrowDown size={15} />}{compactTrend}</small>
+        </div>
       </div>
     </article>
   );
@@ -2045,10 +2408,10 @@ function EventDashboard() {
         </div>
       </div>
       <div className="dashboard-metrics">
-        <DashboardMetric label="事件总量" {...data.stats.eventTotal} icon={Activity} />
-        <DashboardMetric label="活跃用户数" {...data.stats.activeUsers} icon={Users} />
-        <DashboardMetric label="关键按钮点击率" {...data.stats.clickRate} icon={BarChart3} />
-        <DashboardMetric label="核心路径转化率" {...data.stats.pathConversion} icon={CheckCircle2} />
+        <DashboardMetric label="事件总量" {...data.stats.eventTotal} iconSrc="./assets/dashboard-event-total-3d.png" />
+        <DashboardMetric label="活跃用户数" {...data.stats.activeUsers} iconSrc="./assets/dashboard-active-users-3d.png" />
+        <DashboardMetric label="关键按钮点击率" {...data.stats.clickRate} iconSrc="./assets/dashboard-click-rate-3d.png" />
+        <DashboardMetric label="核心路径转化率" {...data.stats.pathConversion} iconSrc="./assets/dashboard-path-conversion-3d.png" />
       </div>
       <div className="dashboard-data-panels">
         <EventGrowthTrend data={data} />
@@ -2124,78 +2487,181 @@ function EventTracking({ openModal, initialTab }: { openModal: OpenModal; initia
   );
 }
 
-function UserManagement({ openModal, initialTab = "users" }: { openModal: OpenModal; initialTab?: "org" | "users" }) {
-  const [tab, setTab] = useState<"org" | "users">(initialTab);
-  const [users, setUsers] = useState(userRows);
+function filterOrganizationTree(nodes: OrganizationNode[], keyword: string): OrganizationNode[] {
+  const normalizedKeyword = keyword.trim().toLocaleLowerCase();
+  if (!normalizedKeyword) return nodes;
+  return nodes.flatMap((node) => {
+    const children = filterOrganizationTree(node.children ?? [], keyword);
+    if (node.label.toLocaleLowerCase().includes(normalizedKeyword) || children.length) return [{ ...node, children }];
+    return [];
+  });
+}
 
-  const updateUser = (userId: string, patch: Partial<(typeof userRows)[number]>) => {
-    setUsers((list) => list.map((user) => (user.用户ID === userId ? { ...user, ...patch } : user)));
+function findOrganizationNode(nodes: OrganizationNode[], nodeId: string): OrganizationNode | undefined {
+  for (const node of nodes) {
+    if (node.id === nodeId) return node;
+    const child = findOrganizationNode(node.children ?? [], nodeId);
+    if (child) return child;
+  }
+  return undefined;
+}
+
+function collectOrganizationLabels(node?: OrganizationNode): string[] {
+  if (!node) return [];
+  return [node.label, ...(node.children ?? []).flatMap((child) => collectOrganizationLabels(child))];
+}
+
+function updateOrganizationNodes(nodes: OrganizationNode[], nodeId: string, update: (node: OrganizationNode) => OrganizationNode): OrganizationNode[] {
+  return nodes.map((node) => {
+    if (node.id === nodeId) return update(node);
+    if (!node.children?.length) return node;
+    return { ...node, children: updateOrganizationNodes(node.children, nodeId, update) };
+  });
+}
+
+function OrganizationTreeNodeRow({ node, level, selectedId, expandedIds, forceExpanded, activeMenuId, onSelect, onToggle, onOpenMenu, onAction }: {
+  node: OrganizationNode;
+  level: number;
+  selectedId: string;
+  expandedIds: Set<string>;
+  forceExpanded: boolean;
+  activeMenuId: string | null;
+  onSelect: (node: OrganizationNode) => void;
+  onToggle: (nodeId: string) => void;
+  onOpenMenu: (nodeId: string | null) => void;
+  onAction: (action: "add" | "rename" | "sync", node: OrganizationNode) => void;
+}) {
+  const hasChildren = Boolean(node.children?.length);
+  const expanded = forceExpanded || expandedIds.has(node.id);
+  return (
+    <div className="organization-tree-node">
+      <div className={`organization-tree-row ${selectedId === node.id ? "active" : ""}`} style={{ paddingLeft: 8 + level * 18 }} onClick={() => onSelect(node)}>
+        <button type="button" className={`organization-tree-toggle ${hasChildren ? "" : "empty"}`} aria-label={expanded ? `收起${node.label}` : `展开${node.label}`} onClick={(event) => { event.stopPropagation(); if (hasChildren) onToggle(node.id); }}>
+          {hasChildren && <ChevronRight size={20} strokeWidth={1.2} className={expanded ? "expanded" : ""} />}
+        </button>
+        <FolderOpen size={16} aria-hidden="true" />
+        <span className="organization-tree-label">{node.label}</span>
+        <div className="organization-tree-actions">
+          <button type="button" className="organization-more-button" aria-label={`${node.label}组织操作`} aria-expanded={activeMenuId === node.id} onClick={(event) => { event.stopPropagation(); onOpenMenu(activeMenuId === node.id ? null : node.id); }}><MoreHorizontal size={16} /></button>
+          {activeMenuId === node.id && (
+            <div className="organization-node-menu" role="menu" onClick={(event) => event.stopPropagation()}>
+              <button type="button" role="menuitem" onClick={() => onAction("add", node)}>新增子组织</button>
+              <button type="button" role="menuitem" onClick={() => onAction("rename", node)}>重命名</button>
+              <button type="button" role="menuitem" onClick={() => onAction("sync", node)}>同步数据</button>
+            </div>
+          )}
+        </div>
+      </div>
+      {hasChildren && expanded && <div>{node.children?.map((child) => <OrganizationTreeNodeRow key={child.id} node={child} level={level + 1} selectedId={selectedId} expandedIds={expandedIds} forceExpanded={forceExpanded} activeMenuId={activeMenuId} onSelect={onSelect} onToggle={onToggle} onOpenMenu={onOpenMenu} onAction={onAction} />)}</div>}
+    </div>
+  );
+}
+
+function OrganizationEditorModal({ mode, organizationName, close, save }: { mode: "add" | "rename"; organizationName: string; close: () => void; save: (value: string) => void }) {
+  const [value, setValue] = useState(mode === "rename" ? organizationName : "");
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="modal organization-editor-modal" role="dialog" aria-modal="true" aria-label={mode === "add" ? "新增子组织" : "重命名组织"}>
+        <ModalHeader title={mode === "add" ? "新增子组织" : "重命名组织"} subtitle={mode === "add" ? `父组织：${organizationName}` : undefined} close={close} />
+        <form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (value.trim()) save(value.trim()); }}>
+          <div className="modal-form-body"><FormField label="组织名称" required><input autoFocus value={value} placeholder="请输入组织名称" onChange={(event) => setValue(event.target.value)} /></FormField></div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!value.trim()}>确定</Button></div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function AccountStatusSwitch({ checked, label, onChange }: { checked: boolean; label: string; onChange: () => void }) {
+  return <div className="account-status-control"><button type="button" role="switch" aria-checked={checked} aria-label={`${label}账号当前${checked ? "启用" : "禁用"}，点击切换`} className={`account-status-switch ${checked ? "checked" : ""}`} onClick={(event) => { event.stopPropagation(); onChange(); }}><span /></button><span className="account-status-text">{checked ? "启用" : "禁用"}</span></div>;
+}
+
+function UserManagement({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
+  const [organizations, setOrganizations] = useState(initialOrganizationTree);
+  const [organizationKeyword, setOrganizationKeyword] = useState("");
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState("gkx");
+  const [expandedOrganizationIds, setExpandedOrganizationIds] = useState<Set<string>>(new Set(["gkx", "research-center", "operation-center"]));
+  const [activeOrganizationMenu, setActiveOrganizationMenu] = useState<string | null>(null);
+  const [organizationEditor, setOrganizationEditor] = useState<{ mode: "add" | "rename"; node: OrganizationNode } | null>(null);
+  const [users, setUsers] = useState(userRows);
+  const [nameFilter, setNameFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("全部");
+  const [userRoleMap, setUserRoleMap] = useState<Record<string, string[]>>({ U20260001: ["普通用户"], U20260002: ["机构用户", "政府用户"] });
+  const [transferUser, setTransferUser] = useState<(typeof userRows)[number] | null>(null);
+
+  const visibleOrganizations = useMemo(() => filterOrganizationTree(organizations, organizationKeyword), [organizations, organizationKeyword]);
+  const selectedOrganization = useMemo(() => findOrganizationNode(organizations, selectedOrganizationId), [organizations, selectedOrganizationId]);
+  const selectedOrganizationLabels = useMemo(() => collectOrganizationLabels(selectedOrganization), [selectedOrganization]);
+  const filteredUsers = useMemo(() => users.filter((user) => {
+    const matchesOrganization = !selectedOrganizationLabels.length || selectedOrganizationLabels.includes(user.所属组织名称);
+    const matchesName = !nameFilter || user.用户姓名.includes(nameFilter.trim());
+    const matchesStatus = statusFilter === "全部" || user.账号状态 === statusFilter;
+    return matchesOrganization && matchesName && matchesStatus;
+  }), [users, selectedOrganizationLabels, nameFilter, statusFilter]);
+
+  const updateUser = (userId: string, patch: Partial<(typeof userRows)[number]>) => setUsers((list) => list.map((user) => user.用户ID === userId ? { ...user, ...patch } : user));
+  const toggleOrganization = (nodeId: string) => setExpandedOrganizationIds((current) => {
+    const next = new Set(current);
+    if (next.has(nodeId)) next.delete(nodeId); else next.add(nodeId);
+    return next;
+  });
+  const handleOrganizationAction = (action: "add" | "rename" | "sync", node: OrganizationNode) => {
+    setActiveOrganizationMenu(null);
+    if (action === "sync") {
+      notify(`${node.label}数据同步成功`);
+      return;
+    }
+    setOrganizationEditor({ mode: action, node });
+  };
+  const saveOrganization = (value: string) => {
+    if (!organizationEditor) return;
+    if (organizationEditor.mode === "rename") {
+      setOrganizations((nodes) => updateOrganizationNodes(nodes, organizationEditor.node.id, (node) => ({ ...node, label: value })));
+      notify("组织名称修改成功");
+    } else {
+      const newNode: OrganizationNode = { id: `org-${Date.now()}`, label: value };
+      setOrganizations((nodes) => updateOrganizationNodes(nodes, organizationEditor.node.id, (node) => ({ ...node, children: [...(node.children ?? []), newNode] })));
+      setExpandedOrganizationIds((current) => new Set([...current, organizationEditor.node.id]));
+      notify("子组织新增成功");
+    }
+    setOrganizationEditor(null);
   };
 
   return (
-    <section className="card page-card">
-      <div className="subtabs">
-        <button className={tab === "org" ? "active" : ""} onClick={() => setTab("org")}>组织管理</button>
-        <button className={tab === "users" ? "active" : ""} onClick={() => setTab("users")}>用户管理</button>
-      </div>
-      {tab === "org" && (
-        <>
-          <div className="filters">
-            <FilterInput label="组织检索" placeholder="请输入" searchable />
+    <section className="card page-card user-organization-page" onClick={() => setActiveOrganizationMenu(null)}>
+      <div className="user-organization-layout">
+        <aside className="organization-tree-panel">
+          <div className="organization-tree-heading"><div><h2>组织架构</h2><span>{collectOrganizationLabels(organizations[0]).length} 个组织</span></div></div>
+          <label className="filter-search-control organization-tree-search"><input aria-label="组织检索" placeholder="检索组织" value={organizationKeyword} onChange={(event) => setOrganizationKeyword(event.target.value)} />{organizationKeyword ? <button type="button" aria-label="清空组织检索" onClick={() => setOrganizationKeyword("")}><X size={14} /></button> : <Search size={16} aria-hidden="true" />}</label>
+          <div className="organization-tree-list" role="tree">
+            {visibleOrganizations.length ? visibleOrganizations.map((node) => <OrganizationTreeNodeRow key={node.id} node={node} level={0} selectedId={selectedOrganizationId} expandedIds={expandedOrganizationIds} forceExpanded={Boolean(organizationKeyword.trim())} activeMenuId={activeOrganizationMenu} onSelect={(selectedNode) => { setSelectedOrganizationId(selectedNode.id); setActiveOrganizationMenu(null); }} onToggle={toggleOrganization} onOpenMenu={setActiveOrganizationMenu} onAction={handleOrganizationAction} />) : <div className="organization-tree-empty">未找到相关组织</div>}
           </div>
-          <div className="table-toolbar">
-            <div><Button icon={Network}>组织数据对接</Button></div>
+        </aside>
+        <section className="user-list-panel">
+          <div className="filters user-management-filters">
+            <FilterInput label="用户姓名" placeholder="请输入" searchable value={nameFilter} onChange={setNameFilter} />
+            <FilterSelect label="账号状态" options={["全部", "启用", "禁用"]} value={statusFilter} onChange={setStatusFilter} />
           </div>
-          <DataTable columns={["组织姓名", "父组织名称"]} rows={orgRows} />
-        </>
-      )}
-      {tab === "users" && (
-        <>
-          <div className="filters">
-            <FilterInput label="用户检索" placeholder="请输入" searchable />
-          </div>
-          <div className="table-toolbar">
-            <div>
-              <Button icon={Network}>用户数据对接</Button>
-              <Button
-                variant="primary"
-                icon={Plus}
-                onClick={() => openModal("user", {
-                  mode: "create",
-                  onSave: (values) => setUsers((list) => [
-                    ...list,
-                    {
-                      用户ID: `U2026${String(list.length + 1).padStart(4, "0")}`,
-                      用户姓名: values.用户姓名,
-                      所属组织名称: values.所属组织,
-                      手机号: values.手机号,
-                      邮箱: values.邮箱,
-                      创建时间: "2026-07-13",
-                      账号状态: "启用",
-                    },
-                  ]),
-                })}
-              >用户注册</Button>
-            </div>
-          </div>
+          <div className="table-toolbar user-management-toolbar"><div>
+            <Button variant="primary" icon={Plus} onClick={() => openModal("user", { mode: "create", onSave: (values) => {
+              setUsers((list) => [...list, { 用户ID: `U2026${String(list.length + 1).padStart(4, "0")}`, 用户姓名: values.姓名, 所属组织名称: values.所属组织, 手机号: values.手机号, 邮箱: values.邮箱, 创建时间: "2026-07-14", 账号状态: "启用" }]);
+              notify("用户创建成功");
+            } })}>手动创建用户</Button>
+            <Button icon={Network} onClick={() => notify("接口数据同步成功")}>接口数据同步</Button>
+          </div></div>
           <DataTable
-            columns={["用户ID", "用户姓名", "所属组织名称", "手机号", "邮箱", "创建时间", "账号状态"]}
-            rows={users.map((row) => ({ ...row, 原始账号状态: row.账号状态, 账号状态: <StatusTag value={row.账号状态} /> }))}
-            actions={(row) => (
-              <ActionLinks
-                actions={[row.原始账号状态 === "启用" ? "禁用" : "启用", "查看详情"]}
-                onAction={(action) => {
-                  const userId = String(row.用户ID);
-                  const user = users.find((item) => item.用户ID === userId);
-                  if (!user) return;
-                  if (action === "启用" || action === "禁用") updateUser(userId, { 账号状态: action });
-                  if (action === "查看详情") openModal("user", { mode: "detail", payload: user });
-                }}
-              />
-            )}
+            columns={["用户ID", "姓名", "归属组织名称", "手机号", "邮箱", "创建时间", "账号状态"]}
+            rows={filteredUsers.map((user) => ({ ...user, 姓名: user.用户姓名, 归属组织名称: user.所属组织名称, 原始账号状态: user.账号状态, 账号状态: <AccountStatusSwitch checked={user.账号状态 === "启用"} label={user.用户姓名} onChange={() => { updateUser(user.用户ID, { 账号状态: user.账号状态 === "启用" ? "禁用" : "启用" }); notify(`账号已${user.账号状态 === "启用" ? "禁用" : "启用"}`); }} /> }))}
+            rowKey={(row) => String(row.用户ID)}
+            fullTextColumns={["用户ID", "手机号", "邮箱"]}
+            actionWidth={220}
+            actions={(row) => <div className="inline-actions user-row-actions"><button type="button" onClick={() => { const user = users.find((item) => item.用户ID === row.用户ID); if (user) openModal("user", { mode: "detail", payload: user }); }}>查看详情</button><button type="button" className="primary-action" onClick={() => setTransferUser(users.find((item) => item.用户ID === row.用户ID) ?? null)}>分配角色</button><button type="button" className="danger-action" onClick={() => { const user = users.find((item) => item.用户ID === row.用户ID); if (!user) return; openModal("delete", { payload: { title: "确认注销", message: `确定要注销用户“${user.用户姓名}”吗？`, description: "此操作无法撤销，注销后该用户将无法登录系统。", confirmLabel: "确认注销", successMessage: "用户注销成功" }, onConfirm: () => setUsers((list) => list.filter((item) => item.用户ID !== user.用户ID)) }); }}>注销用户</button></div>}
           />
-        </>
-      )}
+        </section>
+      </div>
+      {organizationEditor && <OrganizationEditorModal mode={organizationEditor.mode} organizationName={organizationEditor.node.label} close={() => setOrganizationEditor(null)} save={saveOrganization} />}
+      {transferUser && <RoleTransferModal user={transferUser} roles={userRoleMap[transferUser.用户ID] ?? []} close={() => setTransferUser(null)} save={(roles) => { setUserRoleMap((current) => ({ ...current, [transferUser.用户ID]: roles })); setTransferUser(null); notify("角色分配成功"); }} />}
     </section>
   );
 }
@@ -2264,63 +2730,209 @@ function RoleManagement({ openModal, onPermissionConfig }: { openModal: OpenModa
   );
 }
 
-function PageManagement({ openModal }: { openModal: OpenModal }) {
-  const [pages, setPages] = useState(pageRows);
+function findPageMenuNode(nodes: PageMenuNode[], nodeId: string): PageMenuNode | undefined {
+  for (const node of nodes) {
+    if (node.id === nodeId) return node;
+    const child = findPageMenuNode(node.children ?? [], nodeId);
+    if (child) return child;
+  }
+  return undefined;
+}
 
-  const updatePage = (url: string, patch: Partial<(typeof pageRows)[number]>) => {
-    setPages((list) => list.map((page) => (page["地址(URL)"] === url ? { ...page, ...patch } : page)));
+function findPageMenuPath(nodes: PageMenuNode[], nodeId: string, path: PageMenuNode[] = []): PageMenuNode[] | null {
+  for (const node of nodes) {
+    const nextPath = [...path, node];
+    if (node.id === nodeId) return nextPath;
+    const childPath = findPageMenuPath(node.children ?? [], nodeId, nextPath);
+    if (childPath) return childPath;
+  }
+  return null;
+}
+
+function findPageParentId(nodes: PageMenuNode[], nodeId: string, parentId = ""): string {
+  for (const node of nodes) {
+    if (node.id === nodeId) return parentId;
+    const childParent = findPageParentId(node.children ?? [], nodeId, node.id);
+    if (childParent) return childParent;
+  }
+  return "";
+}
+
+function updatePageMenuNodes(nodes: PageMenuNode[], nodeId: string, update: (node: PageMenuNode) => PageMenuNode): PageMenuNode[] {
+  return nodes.map((node) => node.id === nodeId ? update(node) : { ...node, children: node.children ? updatePageMenuNodes(node.children, nodeId, update) : undefined });
+}
+
+function removePageMenuNode(nodes: PageMenuNode[], nodeId: string): PageMenuNode[] {
+  return nodes.filter((node) => node.id !== nodeId).map((node) => ({ ...node, children: node.children ? removePageMenuNode(node.children, nodeId) : undefined }));
+}
+
+function addPageMenuNode(nodes: PageMenuNode[], parentId: string, node: PageMenuNode): PageMenuNode[] {
+  if (!parentId) return [...nodes, node];
+  return updatePageMenuNodes(nodes, parentId, (parent) => ({ ...parent, children: [...(parent.children ?? []), node] }));
+}
+
+type VisiblePageMenuRow = { node: PageMenuNode; depth: number; parentId: string; parentTitle: string };
+
+function getVisiblePageMenuRows(nodes: PageMenuNode[], expandedIds: Set<string>, depth = 1, parentId = "", parentTitle = "-"): VisiblePageMenuRow[] {
+  return nodes.flatMap((node) => [
+    { node, depth, parentId, parentTitle },
+    ...(node.children?.length && expandedIds.has(node.id) ? getVisiblePageMenuRows(node.children, expandedIds, depth + 1, node.id, node.title) : []),
+  ]);
+}
+
+function PageParentCascader({ nodes, value, disabled, excludedId, onChange }: { nodes: PageMenuNode[]; value: string; disabled: boolean; excludedId?: string; onChange: (value: string) => void }) {
+  const availableRoots = nodes.filter((node) => node.id !== excludedId);
+  const initialPath = value ? findPageMenuPath(availableRoots, value) : null;
+  const [levelOneId, setLevelOneId] = useState(initialPath?.[0]?.id ?? "");
+  const [levelTwoId, setLevelTwoId] = useState(initialPath?.[1]?.id ?? "");
+  const levelOne = availableRoots.find((node) => node.id === levelOneId);
+  const levelTwoOptions = (levelOne?.children ?? []).filter((node) => node.id !== excludedId);
+  return (
+    <div className="page-parent-cascader" aria-label="父页面级联选择器">
+      <select aria-label="一级页面" value={levelOneId} disabled={disabled} onChange={(event) => {
+        const nextId = event.target.value;
+        setLevelOneId(nextId);
+        setLevelTwoId("");
+        onChange(nextId);
+      }}>
+        <option value="">无（新建一级页面）</option>
+        {availableRoots.map((node) => <option key={node.id} value={node.id}>{node.title}</option>)}
+      </select>
+      <select aria-label="二级页面" value={levelTwoId} disabled={disabled || !levelOneId} onChange={(event) => {
+        const nextId = event.target.value;
+        setLevelTwoId(nextId);
+        onChange(nextId || levelOneId);
+      }}>
+        <option value="">{levelOneId ? "当前一级页面" : "请先选择一级页面"}</option>
+        {levelTwoOptions.map((node) => <option key={node.id} value={node.id}>{node.title}</option>)}
+      </select>
+    </div>
+  );
+}
+
+type PageEditorState = { mode: "create-root" | "create-child" | "edit"; nodeId?: string; parentId?: string };
+
+function PageEditorModal({ state, nodes, close, save }: { state: PageEditorState; nodes: PageMenuNode[]; close: () => void; save: (values: { title: string; url: string; parentId: string; enabled: "启用" | "禁用" }) => void }) {
+  const node = state.nodeId ? findPageMenuNode(nodes, state.nodeId) : undefined;
+  const initialParentId = state.parentId ?? (node ? findPageParentId(nodes, node.id) : "");
+  const [title, setTitle] = useState(node?.title ?? "");
+  const [url, setUrl] = useState(node?.url ?? "");
+  const [parentId, setParentId] = useState(initialParentId);
+  const [enabled, setEnabled] = useState<"启用" | "禁用">(node?.enabled ?? "启用");
+  const [submitted, setSubmitted] = useState(false);
+  const parentLocked = state.mode === "create-root" || Boolean(node?.children?.length);
+  const canSubmit = Boolean(title.trim() && url.trim());
+  const modalTitle = state.mode === "edit" ? "修改页面属性" : state.mode === "create-root" ? "新建一级页面" : "新建子页面";
+  return createPortal(
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="modal page-editor-modal" role="dialog" aria-modal="true" aria-label={modalTitle}>
+        <ModalHeader title={modalTitle} close={close} />
+        <form className="modal-form" onSubmit={(event) => { event.preventDefault(); setSubmitted(true); if (canSubmit) save({ title: title.trim(), url: url.trim(), parentId, enabled }); }} noValidate>
+          <div className="modal-form-body">
+            <FormField label="标题" required><div className="validated-control"><input className={submitted && !title.trim() ? "is-error" : ""} value={title} placeholder="请输入页面标题" onChange={(event) => setTitle(event.target.value)} />{submitted && !title.trim() && <span className="form-error-message">请输入页面标题</span>}</div></FormField>
+            <FormField label="地址(URL)" required><div className="validated-control"><input className={submitted && !url.trim() ? "is-error" : ""} value={url} placeholder="请输入路由地址" onChange={(event) => setUrl(event.target.value)} />{submitted && !url.trim() && <span className="form-error-message">请输入路由地址</span>}</div></FormField>
+            <FormField label="父页面" required={state.mode === "create-child"}><PageParentCascader nodes={nodes} value={parentId} disabled={parentLocked} excludedId={node?.id} onChange={setParentId} /></FormField>
+            <FormField label="启用属性" required><FormSelect ariaLabel="启用属性" options={["启用", "禁用"]} value={enabled} onChange={(value) => setEnabled(value as "启用" | "禁用")} /></FormField>
+          </div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function PageManagement({ openModal, notify }: { openModal: OpenModal; notify: Notify }) {
+  const [pages, setPages] = useState(initialPageMenuTree);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(["system-menu", "audit-menu", "permission-menu"]));
+  const [editor, setEditor] = useState<PageEditorState | null>(null);
+  const [scrollState, setScrollState] = useState({ hasOverflow: false, showLeftShadow: false, showRightShadow: false });
+  const [tooltip, setTooltip] = useState<{ content: string; left: number; top: number } | null>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+  const visibleRows = useMemo(() => getVisiblePageMenuRows(pages, expandedIds), [pages, expandedIds]);
+  const pageActionColumnWidth = getActionColumnWidth([getOrderedActions(["新建子页面", "修改页面属性", "删除"])]);
+
+  const updateScrollState = useCallback(() => {
+    const tableWrap = tableWrapRef.current;
+    if (!tableWrap) return;
+    const maxScrollLeft = Math.max(0, tableWrap.scrollWidth - tableWrap.clientWidth);
+    const hasOverflow = maxScrollLeft > 1;
+    setScrollState({
+      hasOverflow,
+      showLeftShadow: hasOverflow && tableWrap.scrollLeft > 1,
+      showRightShadow: hasOverflow && tableWrap.scrollLeft < maxScrollLeft - 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    const tableWrap = tableWrapRef.current;
+    if (!tableWrap) return undefined;
+    updateScrollState();
+    const observer = new ResizeObserver(updateScrollState);
+    observer.observe(tableWrap);
+    window.addEventListener("resize", updateScrollState);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [updateScrollState, visibleRows.length]);
+
+  const showTooltip = (content: string, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    const maxLeft = Math.max(8, window.innerWidth - 368);
+    setTooltip({ content, left: Math.min(Math.max(8, rect.left), maxLeft), top: rect.bottom + 8 });
+  };
+
+  const toggleExpanded = (nodeId: string) => setExpandedIds((current) => {
+    const next = new Set(current);
+    if (next.has(nodeId)) next.delete(nodeId); else next.add(nodeId);
+    return next;
+  });
+  const savePage = (values: { title: string; url: string; parentId: string; enabled: "启用" | "禁用" }) => {
+    if (!editor) return;
+    if (editor.mode === "edit" && editor.nodeId) {
+      const current = findPageMenuNode(pages, editor.nodeId);
+      if (!current) return;
+      const editedNode: PageMenuNode = { ...current, title: values.title, url: values.url, enabled: values.enabled };
+      const withoutCurrent = removePageMenuNode(pages, current.id);
+      setPages(addPageMenuNode(withoutCurrent, values.parentId, editedNode));
+      notify("页面属性修改成功");
+    } else {
+      const newNode: PageMenuNode = { id: `page-${Date.now()}`, title: values.title, url: values.url, enabled: values.enabled };
+      setPages((current) => addPageMenuNode(current, values.parentId, newNode));
+      if (values.parentId) setExpandedIds((current) => new Set([...current, values.parentId]));
+      notify(editor.mode === "create-root" ? "一级页面新建成功" : "子页面新建成功");
+    }
+    setEditor(null);
   };
 
   return (
-    <section className="card page-card">
-      <div className="table-toolbar">
-        <div>
-          <Button
-            variant="primary"
-            icon={Plus}
-            onClick={() => openModal("page", {
-              mode: "create",
-              onSave: (values) => setPages((list) => [
-                ...list,
-                {
-                  一级页面: values.父页面 || "-",
-                  二级页面: values.标题,
-                  三级页面: "-",
-                  "地址(URL)": values["地址(URL)"],
-                  启用属性: values.启用属性,
-                },
-              ]),
-            })}
-          >新建/修改页面</Button>
-        </div>
+    <section className="card page-card page-menu-management-page">
+      <div className="table-toolbar page-menu-toolbar"><div><Button variant="primary" icon={Plus} onClick={() => setEditor({ mode: "create-root", parentId: "" })}>新建一级页面</Button></div></div>
+      <div className={`table-wrap page-tree-grid-wrap ${scrollState.hasOverflow ? "is-scrollable" : ""} ${scrollState.showLeftShadow ? "has-left-shadow" : ""} ${scrollState.showRightShadow ? "has-right-shadow" : ""}`} ref={tableWrapRef} onScroll={updateScrollState}>
+        <table className="page-tree-grid">
+          <colgroup><col style={{ width: 260 }} /><col style={{ width: 260 }} /><col style={{ width: 160 }} /><col style={{ width: 112 }} /><col style={{ width: pageActionColumnWidth }} /></colgroup>
+          <thead><tr><th>菜单/页面标题</th><th>路由地址(URL)</th><th>父级页面</th><th>启用状态</th><th className="table-action-cell table-sticky-right" style={{ width: pageActionColumnWidth, minWidth: pageActionColumnWidth, maxWidth: pageActionColumnWidth }}>操作</th></tr></thead>
+          <tbody>{visibleRows.map(({ node, depth, parentId, parentTitle }) => {
+            const hasChildren = Boolean(node.children?.length);
+            const expanded = expandedIds.has(node.id);
+            const canCreateChild = depth < 3;
+            return <tr key={node.id}>
+              <td><div className="page-tree-title" style={{ paddingLeft: (depth - 1) * 24 }}><button type="button" className={`page-tree-toggle ${hasChildren ? "" : "empty"}`} aria-label={expanded ? `收起${node.title}` : `展开${node.title}`} onClick={() => hasChildren && toggleExpanded(node.id)}>{hasChildren && <ChevronRight size={18} className={expanded ? "expanded" : ""} />}</button><span className="page-tree-label-text"><TableCellContent value={node.title} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} /></span></div></td>
+              <td><span className="page-route-text"><TableCellContent value={node.url} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} /></span></td>
+              <td><TableCellContent value={parentTitle} onShowTooltip={showTooltip} onHideTooltip={() => setTooltip(null)} /></td>
+              <td><StatusTag value={node.enabled} /></td>
+              <td className="table-action-cell table-sticky-right" style={{ width: pageActionColumnWidth, minWidth: pageActionColumnWidth, maxWidth: pageActionColumnWidth }}><ActionLinks actions={["新建子页面", "修改页面属性", "删除"]} disabledActions={canCreateChild ? [] : ["新建子页面"]} actionTipOverrides={canCreateChild ? {} : { 新建子页面: "最多支持三级页面" }} onAction={(action) => {
+                if (action === "新建子页面") setEditor({ mode: "create-child", parentId: node.id });
+                if (action === "修改页面属性") setEditor({ mode: "edit", nodeId: node.id, parentId });
+                if (action === "删除") openModal("delete", { payload: { message: `确定要删除页面“${node.title}”吗？`, description: "此操作将隐藏对应前端访问入口，且无法撤销。", successMessage: "页面删除成功" }, onConfirm: () => setPages((current) => removePageMenuNode(current, node.id)) });
+              }} /></td>
+            </tr>;
+          })}</tbody>
+        </table>
       </div>
-      <DataTable
-        columns={["一级页面", "二级页面", "三级页面", "地址(URL)", "启用属性"]}
-        rows={pages.map((row) => ({ ...row, 原始启用属性: row.启用属性, 启用属性: <StatusTag value={row.启用属性} /> }))}
-        actions={(row) => (
-          <ActionLinks
-            actions={["修改", "删除"]}
-            onAction={(action) => {
-              const url = String(row["地址(URL)"]);
-              const page = pages.find((item) => item["地址(URL)"] === url);
-              if (!page) return;
-              const payload: ModalPayload = {
-                标题: page.二级页面,
-                "地址(URL)": page["地址(URL)"],
-                父页面: page.一级页面,
-                启用属性: page.启用属性,
-              };
-              if (action === "修改") openModal("page", { mode: "edit", payload, onSave: (values) => updatePage(url, { 一级页面: values.父页面 || "-", 二级页面: values.标题, "地址(URL)": values["地址(URL)"], 启用属性: values.启用属性 }) });
-              if (action === "删除") {
-                openModal("delete", {
-                  payload: { message: `确认删除${page.二级页面}？` },
-                  onConfirm: () => setPages((list) => list.filter((item) => item["地址(URL)"] !== url)),
-                });
-              }
-            }}
-          />
-        )}
-      />
+      {tooltip && createPortal(<div className="table-cell-tooltip" role="tooltip" style={{ left: tooltip.left, top: tooltip.top }}>{tooltip.content}</div>, document.body)}
+      {editor && <PageEditorModal state={editor} nodes={pages} close={() => setEditor(null)} save={savePage} />}
     </section>
   );
 }
@@ -2550,16 +3162,16 @@ function DirectoryEditorModal({ mode, initialValue, close, save }: { mode: "crea
   );
 }
 
-function BusinessItemModal({ mode, columns, values, close, save }: { mode: "create" | "edit" | "detail"; columns: string[]; values: Record<string, string>; close: () => void; save: (values: Record<string, string>) => void }) {
+function BusinessItemModal({ mode, columns, requiredColumns, values, close, save }: { mode: "create" | "edit" | "detail"; columns: string[]; requiredColumns: string[]; values: Record<string, string>; close: () => void; save: (values: Record<string, string>) => void }) {
   const [formValues, setFormValues] = useState(values);
   const title = mode === "create" ? "新增资源" : mode === "edit" ? "编辑资源" : "资源详情";
-  const canSubmit = String(formValues[columns[0]] ?? "").trim().length > 0;
+  const canSubmit = requiredColumns.every((column) => String(formValues[column] ?? "").trim().length > 0);
   return createPortal(
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
       <div className="modal business-item-modal" role="dialog" aria-modal="true" aria-label={title}>
         <ModalHeader title={title} close={close} />
         <form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (mode !== "detail" && canSubmit) save(formValues); }}>
-          <div className="modal-form-body business-item-form">{columns.map((column) => <FormField label={column} required={column === columns[0]} key={column}><input disabled={mode === "detail"} value={formValues[column] ?? ""} placeholder={`请输入${column}`} onChange={(event) => setFormValues((current) => ({ ...current, [column]: event.target.value }))} /></FormField>)}</div>
+          <div className="modal-form-body business-item-form">{columns.map((column) => <FormField label={column} required={mode !== "detail" && requiredColumns.includes(column)} key={column}><input disabled={mode === "detail"} value={formValues[column] ?? ""} placeholder={`请输入${column}`} onChange={(event) => setFormValues((current) => ({ ...current, [column]: event.target.value }))} /></FormField>)}</div>
           <div className="modal-footer">{mode === "detail" ? <Button onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></>}</div>
         </form>
       </div>
@@ -2628,7 +3240,7 @@ function BusinessResourceWorkspace({ type, openModal, notify }: { type: Business
         }} />} />
       </section>
       {directoryEditor && <DirectoryEditorModal mode={directoryEditor} initialValue={directoryEditor === "edit" ? directory : ""} close={() => setDirectoryEditor(null)} save={saveDirectory} />}
-      {itemEditor && <BusinessItemModal mode={itemEditor.mode} columns={config.columns} values={itemEditor.values} close={() => setItemEditor(null)} save={(values) => {
+      {itemEditor && <BusinessItemModal mode={itemEditor.mode} columns={config.columns} requiredColumns={config.requiredColumns} values={itemEditor.values} close={() => setItemEditor(null)} save={(values) => {
         if (itemEditor.mode === "create") setResourceRows((list) => [...list, values]);
         else setResourceRows((list) => list.map((item, index) => index === itemEditor.index ? values : item));
         setItemEditor(null);
@@ -2723,7 +3335,7 @@ function PermissionConfig({ notify }: { notify: Notify }) {
 
 const reportFormFields = ["报告标题", "报告类型", "报告来源", "所属领域", "上传时间", "内容摘要"] as const;
 const trackingFormFields = ["事件ID", "所属功能模块", "埋点标签", "埋点路径", "触发机制"] as const;
-const userFormFields = ["用户姓名", "手机号", "邮箱", "所属组织"] as const;
+const userFormFields = ["姓名", "手机号", "邮箱", "所属组织"] as const;
 const roleFormFields = ["角色名称", "角色描述", "状态"] as const;
 const pageFormFields = ["标题", "地址(URL)", "父页面", "启用属性"] as const;
 
@@ -2760,10 +3372,13 @@ function Modal({ type, mode = "create", payload = {}, onConfirm, onSave, close, 
   if (type === "delete") return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal confirm-modal">
-        <ModalHeader title="删除" close={close} />
+        <ModalHeader title={payload.title || "确认删除"} close={close} />
         <div className="modal-form">
-          <div className="modal-form-body"><ModalAlert tone="warning">{payload.message}</ModalAlert></div>
-          <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="danger" onClick={() => { onConfirm?.(); notify("删除成功"); close(); }}>删除</Button></div>
+          <div className="confirm-modal-body">
+            <p className="confirm-modal-message">{payload.message}</p>
+            <p className="confirm-modal-description">{payload.description || "此操作无法撤销，删除后数据将无法恢复。"}</p>
+          </div>
+          <div className="modal-footer"><Button onClick={close}>取消</Button><Button variant="danger" onClick={() => { onConfirm?.(); notify(payload.successMessage || "删除成功"); close(); }}>{payload.confirmLabel || "删除"}</Button></div>
         </div>
       </div>
     </div>
@@ -2771,7 +3386,7 @@ function Modal({ type, mode = "create", payload = {}, onConfirm, onSave, close, 
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
       <div className="modal form-modal">
-        {type === "report" && <ReportModal close={close} payload={payload} onSave={handleSave} />}
+        {type === "report" && <ReportModal close={close} mode={mode} payload={payload} onSave={handleSave} />}
         {type === "tracking" && mode === "batch" && <TrackingBatchModal close={close} onSuccess={() => notify(getModalSuccessMessage(type, mode))} />}
         {type === "tracking" && mode !== "batch" && <TrackingModal close={close} mode={mode} payload={payload} onSave={handleSave} />}
         {type === "user" && <UserModal close={close} mode={mode} payload={payload} onSave={handleSave} />}
@@ -2782,38 +3397,42 @@ function Modal({ type, mode = "create", payload = {}, onConfirm, onSave, close, 
   );
 }
 
-function ReportModal({ close, payload, onSave }: { close: () => void; payload: ModalPayload; onSave?: ModalSave }) {
+function ReportModal({ close, mode, payload, onSave }: { close: () => void; mode: ModalMode; payload: ModalPayload; onSave?: ModalSave }) {
   const { values, setValue } = useModalValues(payload, reportFormFields);
+  const [fileName, setFileName] = useState("");
+  const isEdit = mode === "edit";
+  const canSubmit = ["报告标题", "报告类型", "报告来源", "所属领域", "上传时间"].every((field) => values[field]?.trim()) && (isEdit || fileName.length > 0);
   return (
     <>
       <ModalHeader title="报告上传/信息修改" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); if (!canSubmit) return; onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="PDF格式文件"><FileUploadField /></FormField>
+          <FormField label="PDF格式文件" required={!isEdit}><FileUploadField onFileChange={setFileName} /></FormField>
           <div className="form-row">
-            <FormField label="报告标题"><input value={values.报告标题} onChange={(event) => setValue("报告标题", event.target.value)} /></FormField>
-            <FormField label="报告类型"><FormSelect options={reportTypeOptions} value={values.报告类型} onChange={(value) => setValue("报告类型", value)} /></FormField>
+            <FormField label="报告标题" required><input value={values.报告标题} onChange={(event) => setValue("报告标题", event.target.value)} /></FormField>
+            <FormField label="报告类型" required><FormSelect options={reportTypeOptions} value={values.报告类型} onChange={(value) => setValue("报告类型", value)} /></FormField>
           </div>
           <div className="form-row">
-            <FormField label="报告来源"><input value={values.报告来源} onChange={(event) => setValue("报告来源", event.target.value)} /></FormField>
-            <FormField label="所属领域"><FormSelect options={["人工智能", "智能制造", "新材料", "低空经济"]} value={values.所属领域} onChange={(value) => setValue("所属领域", value)} /></FormField>
+            <FormField label="报告来源" required><input value={values.报告来源} onChange={(event) => setValue("报告来源", event.target.value)} /></FormField>
+            <FormField label="所属领域" required><FormSelect options={["人工智能", "智能制造", "新材料", "低空经济"]} value={values.所属领域} onChange={(value) => setValue("所属领域", value)} /></FormField>
           </div>
-          <FormField label="上传时间"><DateField value={values.上传时间} onChange={(value) => setValue("上传时间", value)} /></FormField>
+          <FormField label="上传时间" required><DateField value={values.上传时间} onChange={(value) => setValue("上传时间", value)} /></FormField>
           <FormField label="内容摘要"><textarea value={values.内容摘要} onChange={(event) => setValue("内容摘要", event.target.value)} /></FormField>
         </div>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
+        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></div>
       </form>
     </>
   );
 }
 
 function TrackingBatchModal({ close, onSuccess }: { close: () => void; onSuccess: () => void }) {
+  const [fileName, setFileName] = useState("");
   return (
     <>
       <ModalHeader title="批量上传埋点" close={close} />
-      <form className="modal-form" onSubmit={(event) => { event.preventDefault(); onSuccess(); close(); }}>
-        <div className="modal-form-body"><FileUploadField accept=".xlsx,.xls,.csv" hint="选择文件" /></div>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
+      <form className="modal-form" onSubmit={(event) => { event.preventDefault(); if (!fileName) return; onSuccess(); close(); }}>
+        <div className="modal-form-body"><FormField label="上传文件" required><FileUploadField accept=".xlsx,.xls,.csv" hint="支持 .xlsx、.xls、.csv 格式" onFileChange={setFileName} /></FormField></div>
+        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!fileName}>保存</Button></div>
       </form>
     </>
   );
@@ -2822,36 +3441,101 @@ function TrackingBatchModal({ close, onSuccess }: { close: () => void; onSuccess
 function TrackingModal({ close, mode, payload, onSave }: { close: () => void; mode: Exclude<ModalMode, "batch">; payload: ModalPayload; onSave?: ModalSave }) {
   const { values, setValue } = useModalValues(payload, trackingFormFields);
   const isDetail = mode === "detail";
+  const canSubmit = trackingFormFields.every((field) => values[field]?.trim());
   const moduleOptions = ["报告管理", "审核管理", "用户管理", "角色管理", "页面管理", "资源管理", "权限配置"];
   const triggerOptions = ["点击", "提交", "保存", "曝光", "页面加载"];
   return (
     <>
       <ModalHeader title={isDetail ? "查看详情" : mode === "edit" ? "修改埋点" : "新增埋点"} close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); if (!isDetail && !canSubmit) return; onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="事件ID"><input readOnly={isDetail} value={values.事件ID} onChange={(event) => setValue("事件ID", event.target.value)} /></FormField>
-          <FormField label="所属功能模块"><FormSelect ariaLabel="所属功能模块" options={moduleOptions} value={values.所属功能模块} disabled={isDetail} onChange={(value) => setValue("所属功能模块", value)} /></FormField>
-          <FormField label="埋点标签"><input readOnly={isDetail} value={values.埋点标签} onChange={(event) => setValue("埋点标签", event.target.value)} /></FormField>
-          <FormField label="埋点路径"><input readOnly={isDetail} value={values.埋点路径} onChange={(event) => setValue("埋点路径", event.target.value)} /></FormField>
-          <FormField label="触发机制"><FormSelect ariaLabel="触发机制" options={triggerOptions} value={values.触发机制} disabled={isDetail} onChange={(value) => setValue("触发机制", value)} /></FormField>
+          <FormField label="事件ID" required={!isDetail}><input readOnly={isDetail} value={values.事件ID} onChange={(event) => setValue("事件ID", event.target.value)} /></FormField>
+          <FormField label="所属功能模块" required={!isDetail}><FormSelect ariaLabel="所属功能模块" options={moduleOptions} value={values.所属功能模块} disabled={isDetail} onChange={(value) => setValue("所属功能模块", value)} /></FormField>
+          <FormField label="埋点标签" required={!isDetail}><input readOnly={isDetail} value={values.埋点标签} onChange={(event) => setValue("埋点标签", event.target.value)} /></FormField>
+          <FormField label="埋点路径" required={!isDetail}><input readOnly={isDetail} value={values.埋点路径} onChange={(event) => setValue("埋点路径", event.target.value)} /></FormField>
+          <FormField label="触发机制" required={!isDetail}><FormSelect ariaLabel="触发机制" options={triggerOptions} value={values.触发机制} disabled={isDetail} onChange={(value) => setValue("触发机制", value)} /></FormField>
         </div>
-        <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></>}</div>
+        <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></>}</div>
       </form>
     </>
   );
 }
 
+function findOrganizationPath(nodes: OrganizationNode[], label: string, path: OrganizationNode[] = []): OrganizationNode[] | null {
+  for (const node of nodes) {
+    const nextPath = [...path, node];
+    if (node.label === label) return nextPath;
+    const childPath = findOrganizationPath(node.children ?? [], label, nextPath);
+    if (childPath) return childPath;
+  }
+  return null;
+}
+
+function OrganizationCascader({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (value: string) => void }) {
+  const initialPath = findOrganizationPath(initialOrganizationTree, value) ?? [initialOrganizationTree[0]];
+  const [levelOneId] = useState(initialPath[0]?.id ?? initialOrganizationTree[0].id);
+  const [levelTwoId, setLevelTwoId] = useState(initialPath[1]?.id ?? "");
+  const [levelThreeId, setLevelThreeId] = useState(initialPath[2]?.id ?? "");
+  const levelOne = initialOrganizationTree.find((node) => node.id === levelOneId) ?? initialOrganizationTree[0];
+  const levelTwoOptions = levelOne.children ?? [];
+  const levelTwo = levelTwoOptions.find((node) => node.id === levelTwoId);
+  const levelThreeOptions = levelTwo?.children ?? [];
+  return (
+    <div className="organization-cascader" aria-label="所属组织级联选择器">
+      <select aria-label="一级组织" value={levelOneId} disabled={disabled}><option value={levelOne.id}>{levelOne.label}</option></select>
+      <select aria-label="二级组织" value={levelTwoId} disabled={disabled} onChange={(event) => {
+        const nextId = event.target.value;
+        const nextNode = levelTwoOptions.find((node) => node.id === nextId);
+        setLevelTwoId(nextId);
+        setLevelThreeId("");
+        onChange(nextNode?.label ?? levelOne.label);
+      }}>
+        <option value="">请选择</option>
+        {levelTwoOptions.map((node) => <option key={node.id} value={node.id}>{node.label}</option>)}
+      </select>
+      <select aria-label="三级组织" value={levelThreeId} disabled={disabled || !levelTwoId} onChange={(event) => {
+        const nextId = event.target.value;
+        const nextNode = levelThreeOptions.find((node) => node.id === nextId);
+        setLevelThreeId(nextId);
+        onChange(nextNode?.label ?? levelTwo?.label ?? levelOne.label);
+      }}>
+        <option value="">{levelTwoId ? "可选" : "请先选择上级"}</option>
+        {levelThreeOptions.map((node) => <option key={node.id} value={node.id}>{node.label}</option>)}
+      </select>
+    </div>
+  );
+}
+
 function UserModal({ close, mode, payload, onSave }: { close: () => void; mode: ModalMode; payload: ModalPayload; onSave?: ModalSave }) {
-  const { values, setValue } = useModalValues(payload, userFormFields, { 所属组织: "所属组织名称" });
+  const { values, setValue } = useModalValues(payload, userFormFields, { 姓名: "用户姓名", 所属组织: "所属组织名称" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const isDetail = mode === "detail";
+  const submit = () => {
+    const nextErrors: Record<string, string> = {};
+    if (!values.姓名.trim()) nextErrors.姓名 = "请输入姓名";
+    if (!/^1[3-9]\d{9}$/.test(values.手机号.trim())) nextErrors.手机号 = "请输入正确的 11 位手机号";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.邮箱.trim())) nextErrors.邮箱 = "请输入正确的邮箱地址";
+    if (!values.所属组织.trim()) nextErrors.所属组织 = "请选择所属组织";
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+    onSave?.(values);
+    close();
+  };
+  const changeValue = (field: string, value: string) => {
+    setValue(field, value);
+    if (errors[field]) setErrors((current) => ({ ...current, [field]: "" }));
+  };
   return (
     <>
-      <ModalHeader title={isDetail ? "查看详情" : "用户注册"} close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
+      <ModalHeader title={isDetail ? "用户详情" : "手动创建用户"} close={close} />
+      <form className="modal-form user-account-form" onSubmit={(event) => { event.preventDefault(); if (!isDetail) submit(); }} noValidate>
         <div className="modal-form-body">
-          {userFormFields.map((field) => <FormField label={field} key={field}><input readOnly={isDetail} value={values[field]} onChange={(event) => setValue(field, event.target.value)} /></FormField>)}
+          <FormField label="姓名" required={!isDetail}><div className="validated-control"><input readOnly={isDetail} className={errors.姓名 ? "is-error" : ""} placeholder="请输入姓名" value={values.姓名} onChange={(event) => changeValue("姓名", event.target.value)} />{errors.姓名 && <span className="form-error-message">{errors.姓名}</span>}</div></FormField>
+          <FormField label="手机号" required={!isDetail}><div className="validated-control"><input readOnly={isDetail} className={errors.手机号 ? "is-error" : ""} type="tel" inputMode="numeric" maxLength={11} placeholder="请输入11位手机号" value={values.手机号} onChange={(event) => changeValue("手机号", event.target.value.replace(/\D/g, ""))} />{errors.手机号 && <span className="form-error-message">{errors.手机号}</span>}</div></FormField>
+          <FormField label="邮箱" required={!isDetail}><div className="validated-control"><input readOnly={isDetail} className={errors.邮箱 ? "is-error" : ""} type="email" placeholder="请输入邮箱地址" value={values.邮箱} onChange={(event) => changeValue("邮箱", event.target.value)} />{errors.邮箱 && <span className="form-error-message">{errors.邮箱}</span>}</div></FormField>
+          <FormField label="所属组织" required={!isDetail}><div className={`validated-control ${errors.所属组织 ? "is-error" : ""}`}><OrganizationCascader value={values.所属组织} disabled={isDetail} onChange={(value) => changeValue("所属组织", value)} />{errors.所属组织 && <span className="form-error-message">{errors.所属组织}</span>}</div></FormField>
         </div>
-        <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></>}</div>
+        <div className="modal-footer">{isDetail ? <Button variant="primary" onClick={close}>关闭</Button> : <><Button onClick={close}>取消</Button><Button type="submit" variant="primary">创建</Button></>}</div>
       </form>
     </>
   );
@@ -2859,16 +3543,17 @@ function UserModal({ close, mode, payload, onSave }: { close: () => void; mode: 
 
 function RoleModal({ close, payload, onSave }: { close: () => void; payload: ModalPayload; onSave?: ModalSave }) {
   const { values, setValue } = useModalValues(payload, roleFormFields);
+  const canSubmit = values.角色名称.trim().length > 0 && values.状态.trim().length > 0;
   return (
     <>
       <ModalHeader title="新建/编辑" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); if (!canSubmit) return; onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="角色名称"><input value={values.角色名称} onChange={(event) => setValue("角色名称", event.target.value)} /></FormField>
+          <FormField label="角色名称" required><input value={values.角色名称} onChange={(event) => setValue("角色名称", event.target.value)} /></FormField>
           <FormField label="角色描述"><textarea value={values.角色描述} onChange={(event) => setValue("角色描述", event.target.value)} /></FormField>
-          <FormField label="状态"><FormSelect options={statusOptions} value={values.状态} onChange={(value) => setValue("状态", value)} /></FormField>
+          <FormField label="状态" required><FormSelect options={statusOptions} value={values.状态} onChange={(value) => setValue("状态", value)} /></FormField>
         </div>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
+        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></div>
       </form>
     </>
   );
@@ -2876,28 +3561,30 @@ function RoleModal({ close, payload, onSave }: { close: () => void; payload: Mod
 
 function PageModal({ close, payload, onSave }: { close: () => void; payload: ModalPayload; onSave?: ModalSave }) {
   const { values, setValue } = useModalValues(payload, pageFormFields);
+  const canSubmit = values.标题.trim().length > 0 && values["地址(URL)"].trim().length > 0 && values.启用属性.trim().length > 0;
   return (
     <>
       <ModalHeader title="新建/修改页面" close={close} />
-      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); onSave?.(values); close(); }}>
+      <form className="modal-form" onSubmit={(e) => { e.preventDefault(); if (!canSubmit) return; onSave?.(values); close(); }}>
         <div className="modal-form-body">
-          <FormField label="标题"><input value={values.标题} onChange={(event) => setValue("标题", event.target.value)} /></FormField>
-          <FormField label="地址(URL)"><input value={values["地址(URL)"]} onChange={(event) => setValue("地址(URL)", event.target.value)} /></FormField>
+          <FormField label="标题" required><input value={values.标题} onChange={(event) => setValue("标题", event.target.value)} /></FormField>
+          <FormField label="地址(URL)" required><input value={values["地址(URL)"]} onChange={(event) => setValue("地址(URL)", event.target.value)} /></FormField>
           <FormField label="父页面"><input value={values.父页面} onChange={(event) => setValue("父页面", event.target.value)} /></FormField>
-          <FormField label="启用属性"><FormSelect options={statusOptions} value={values.启用属性} onChange={(value) => setValue("启用属性", value)} /></FormField>
+          <FormField label="启用属性" required><FormSelect options={statusOptions} value={values.启用属性} onChange={(value) => setValue("启用属性", value)} /></FormField>
         </div>
-        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary">保存</Button></div>
+        <div className="modal-footer"><Button onClick={close}>取消</Button><Button type="submit" variant="primary" disabled={!canSubmit}>保存</Button></div>
       </form>
     </>
   );
 }
 
-function FileUploadField({ id, accept = "application/pdf", hint = "仅支持 PDF 格式文件" }: { id?: string; accept?: string; hint?: string }) {
+function FileUploadField({ id, accept = "application/pdf", hint = "仅支持 PDF 格式文件", onFileChange }: { id?: string; accept?: string; hint?: string; onFileChange?: (fileName: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
   const clearFile = () => {
     if (inputRef.current) inputRef.current.value = "";
     setFileName("");
+    onFileChange?.("");
   };
   return (
     <div className="upload-field">
@@ -2907,7 +3594,11 @@ function FileUploadField({ id, accept = "application/pdf", hint = "仅支持 PDF
         className="upload-file-input"
         type="file"
         accept={accept}
-        onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
+        onChange={(event) => {
+          const nextFileName = event.target.files?.[0]?.name ?? "";
+          setFileName(nextFileName);
+          onFileChange?.(nextFileName);
+        }}
       />
       <button className="upload-trigger" type="button" onClick={() => inputRef.current?.click()}><Upload size={14} />点击上传</button>
       <small className="upload-hint">{hint}</small>
@@ -3230,7 +3921,7 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
     <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
       <div className="brand">
         <img src="./assets/gkx-logo.png" alt="国科信" />
-        {!collapsed && <strong>国科信门户管理系统</strong>}
+        {!collapsed && <strong>门户后台管理系统</strong>}
       </div>
       <button className="sidebar-fold" onClick={() => setCollapsed(!collapsed)} aria-label={collapsed ? "展开侧栏" : "收起侧栏"}>
         <img src={collapsed ? "./assets/sidebar-collapsed.svg" : "./assets/sidebar-expanded.svg"} alt="" />
@@ -3247,18 +3938,19 @@ function Sidebar({ active, setActive, collapsed, setCollapsed }: { active: PageK
               if (item.key) {
                 return (
                   <button className={`group-button nav-leaf ${isLeafActive ? "active" : ""}`} title={collapsed ? item.label : undefined} onClick={() => setActive(item.key!)} key={item.label}>
-                    <ItemIcon size={19} />
+                    <ItemIcon className="nav-item-icon" size={20} strokeWidth={1.2} />
                     {!collapsed && <span>{item.label}</span>}
                   </button>
                 );
               }
               return (
                 <div className={`nav-group ${hasActiveChild ? "has-active" : ""}`} key={item.label}>
-                  <button className="group-button nav-parent" title={collapsed ? item.label : undefined} onClick={() => collapsed ? setActive(item.children![0].key) : setExpanded({ ...expanded, [item.label]: !isOpen })}>
-                    <ItemIcon size={19} />
-                    {!collapsed && <><span>{item.label}</span><ChevronDown className={isOpen ? "rotate" : ""} size={15} /></>}
+                  <button className="group-button nav-parent" aria-haspopup={collapsed ? "menu" : undefined} onClick={() => !collapsed && setExpanded({ ...expanded, [item.label]: !isOpen })}>
+                    <ItemIcon className="nav-item-icon" size={20} strokeWidth={1.2} />
+                    {!collapsed && <><span>{item.label}</span><ChevronDown className={`nav-chevron ${isOpen ? "rotate" : ""}`} size={16} strokeWidth={1.2} /></>}
                   </button>
                   {!collapsed && isOpen && <div className="group-children">{item.children?.map((child) => <button className={active === child.key ? "active" : ""} onClick={() => setActive(child.key)} key={child.key}>{child.label}</button>)}</div>}
+                  {collapsed && <div className="collapsed-submenu" role="menu" aria-label={`${item.label}二级菜单`}><strong>{item.label}</strong>{item.children?.map((child) => <button type="button" role="menuitem" className={active === child.key ? "active" : ""} onClick={() => setActive(child.key)} key={child.key}>{child.label}</button>)}</div>}
                 </div>
               );
             })}
@@ -3297,6 +3989,7 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [formWorkspaceOpen, setFormWorkspaceOpen] = useState(false);
+  const [formCenterVersion, setFormCenterVersion] = useState(0);
   const [modal, setModal] = useState<{ type: ModalType; mode: ModalMode; payload: ModalPayload; onConfirm?: () => void; onSave?: ModalSave }>({ type: null, mode: "create", payload: {} });
   const [command, setCommand] = useState(false);
   const [feedbackNotices, setFeedbackNotices] = useState<FeedbackNotice[]>([]);
@@ -3311,7 +4004,9 @@ export default function App() {
     if (active !== "form-center") setFormWorkspaceOpen(false);
   }, [active]);
   const currentTitle = pageLabels[active];
+  const breadcrumbSection = breadcrumbSections[active];
   const breadcrumbParent = breadcrumbParents[active];
+  const breadcrumbParentTarget = breadcrumbParentTargets[active];
   const openModal: OpenModal = (type, options = {}) => setModal({
     type,
     mode: options.mode ?? "create",
@@ -3320,27 +4015,51 @@ export default function App() {
     onSave: options.onSave,
   });
   const go = (key: PageKey) => { setActive(key); setMobileOpen(false); };
+  const returnToFormCenter = () => {
+    setFormWorkspaceOpen(false);
+    setFormCenterVersion((version) => version + 1);
+    go("form-center");
+  };
   const page = useMemo(() => {
     if (active === "report-management") return <ReportManagement openModal={openModal} notify={notify} />;
     if (active === "workflow-center") return <WorkflowCenter openModal={openModal} notify={notify} />;
-    if (active === "form-center") return <FormCenter openModal={openModal} notify={notify} onWorkspaceChange={setFormWorkspaceOpen} />;
+    if (active === "form-center") return <FormCenter key={formCenterVersion} openModal={openModal} notify={notify} onWorkspaceChange={setFormWorkspaceOpen} />;
     if (active === "audit-content") return <AuditContent />;
     if (active === "event-info") return <EventTracking key="event-info" initialTab="info" openModal={openModal} />;
     if (active === "event-dashboard") return <EventTracking key="event-dashboard" initialTab="stats" openModal={openModal} />;
-    if (active === "org-management") return <UserManagement key="org-management" initialTab="org" openModal={openModal} />;
-    if (active === "user-management") return <UserManagement openModal={openModal} />;
+    if (active === "org-management" || active === "user-management") return <UserManagement openModal={openModal} notify={notify} />;
     if (active === "role-management") return <RoleManagement openModal={openModal} onPermissionConfig={() => go("permission-config")} />;
-    if (active === "page-management") return <PageManagement openModal={openModal} />;
+    if (active === "page-management") return <PageManagement openModal={openModal} notify={notify} />;
     if (active === "resource-management") return <ResourceManagement openModal={openModal} notify={notify} />;
     return <PermissionConfig notify={notify} />;
-  }, [active]);
+  }, [active, formCenterVersion]);
   return (
     <div className={`app-shell ${collapsed ? "is-sidebar-collapsed" : ""}`}>
       <div className={mobileOpen ? "mobile-sidebar open" : "mobile-sidebar"}><Sidebar active={active} setActive={go} collapsed={collapsed} setCollapsed={setCollapsed} /></div>
       {mobileOpen && <button className="mobile-overlay" onClick={() => setMobileOpen(false)} aria-label="关闭导航" />}
       <TopBar collapsed={collapsed} onMenu={() => setMobileOpen(!mobileOpen)} onSearch={() => setCommand(true)} />
       <main className={collapsed ? "main collapsed" : "main"}>
-        <div className="page-heading"><p><img src="./assets/breadcrumb-home.svg" alt="" /><span>/</span>{breadcrumbParent && <><span className="breadcrumb-parent">{breadcrumbParent}</span><span>/</span></>}{currentTitle}{active === "form-center" && formWorkspaceOpen && <><span>/</span>表单设计器</>}</p></div>
+        <div className="page-heading">
+          <nav className="breadcrumb" aria-label="面包屑">
+            <span className="breadcrumb-section">{breadcrumbSection}</span>
+            <span className="breadcrumb-separator" aria-hidden="true">/</span>
+            {breadcrumbParent && breadcrumbParentTarget && (
+              <>
+                <button type="button" className="breadcrumb-link" onClick={() => go(breadcrumbParentTarget)}>{breadcrumbParent}</button>
+                <span className="breadcrumb-separator" aria-hidden="true">/</span>
+              </>
+            )}
+            {active === "form-center" && formWorkspaceOpen ? (
+              <>
+                <button type="button" className="breadcrumb-link" onClick={returnToFormCenter}>{currentTitle}</button>
+                <span className="breadcrumb-separator" aria-hidden="true">/</span>
+                <span className="breadcrumb-current" aria-current="page">表单设计器</span>
+              </>
+            ) : (
+              <span className="breadcrumb-current" aria-current="page">{currentTitle}</span>
+            )}
+          </nav>
+        </div>
         <div className="page-content">
           <div className="page-body">{page}</div>
         </div>
