@@ -147,7 +147,7 @@ export default function PrdKeyDataSystem() {
 
   return <div className={`kds-app${collapsed ? " is-collapsed" : ""}`} onClickCapture={handleContentClick}>
     <aside className="kds-sidebar">
-      <div className="kds-brand"><img src="/assets/gkx-logo.png" alt="" /><span><strong>国科信</strong><small>关键数据更新订阅推送系统</small></span></div>
+      <div className="kds-brand"><img src="./assets/gkx-logo.png" alt="" /><span><strong>国科信</strong><small>关键数据更新订阅推送系统</small></span></div>
       <nav aria-label="系统导航">{prdNavGroups.map((group) => {
         const open = expandedGroup === group.label;
         const active = group.label === activeGroup.label;
